@@ -16,11 +16,11 @@ Eslite 誠品線上 Astro 商品頁 SEO 每日自動化維運工具。
 
 ```bash
 # 每日更新（下載 → 上傳 → GAS → 分析報告）
-npm run daily
+pnpm run daily
 
-# 查詢問題
-npm run query 昨天 SSR P95 是多少？
-npm run query 比較 5/18 和 5/19 的慢渲染率
+# 查詢問題（需加引號）
+pnpm run query "昨天 SSR P95 是多少？"
+pnpm run query "比較 5/18 和 5/19 的慢渲染率"
 ```
 
 ---
@@ -43,7 +43,7 @@ npm run query 比較 5/18 和 5/19 的慢渲染率
 ### 1. 安裝依賴
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 2. 建立 `.env`
@@ -106,7 +106,7 @@ analysis-log/
 
 ### 週報說明
 
-- **執行時機**：每週五 `npm run daily` 時自動觸發
+- **執行時機**：每週五 `pnpm run daily` 時自動觸發
 - **涵蓋範圍**：上週五到本週四（7 天）
 - **發送對象**：Google Chat（`config.js` → `googleChatWebhookUrl`）
 - **對齊 PD 節奏**：PD 每週四更新 GSC 等 SEO 數據，週五週報可呈現最新完整狀態
