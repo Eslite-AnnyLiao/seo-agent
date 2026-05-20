@@ -1,0 +1,12 @@
+{
+  "name": "seo-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "daily": "node --env-file=.env daily-update.js",
+    "query": "node --env-file=.env seo-agent.js"
+  },
+  "dependencies": {
+    "googleapis": "^144.0.0"
+  }
+}
