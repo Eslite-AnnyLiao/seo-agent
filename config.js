@@ -5,9 +5,9 @@
 // ─────────────────────────────────────────────
 
 export const config = {
-  // ── 本機路徑 ──────────────────────────────
-  analysisLogPath: '/Users/liaoliting/Webserver/analysis-log',
-  pipelineScript: '/Users/liaoliting/Webserver/analysis-log/daily-pipeline.js',
+  // ── 本機路徑（設定於 .env）────────────────
+  analysisLogPath: process.env.ANALYSIS_LOG_PATH,
+  pipelineScript:  process.env.PIPELINE_SCRIPT,
 
   jsonPaths: {
     ssr: 'daily-analysis-result/astro/datadog-export/ssr',
@@ -37,7 +37,7 @@ export const config = {
   },
 
   // ── Google Chat Webhook ───────────────────
-  googleChatWebhookUrl: 'https://chat.googleapis.com/v1/spaces/AAQAprYGCyI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=08czPCLG_sQsPIU6Jc7q7C2jlf7uStOJHKvi-_kxWGk',
+  googleChatWebhookUrl: process.env.GOOGLE_CHAT_WEBHOOK_URL ?? '',
 
   // ── 數據判斷規則 ──────────────────────────
   rules: {

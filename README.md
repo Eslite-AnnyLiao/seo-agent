@@ -50,7 +50,14 @@ pnpm install
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_CHAT_WEBHOOK_URL=https://chat.googleapis.com/...
+ANALYSIS_LOG_PATH=/your/path/to/analysis-log
+PIPELINE_SCRIPT=/your/path/to/analysis-log/daily-pipeline.js
 ```
+
+> `ANTHROPIC_API_KEY`：向 Anthropic 申請。
+> `GOOGLE_CHAT_WEBHOOK_URL`：請向專案負責人取得。
+> `ANALYSIS_LOG_PATH` / `PIPELINE_SCRIPT`：依賴另一個 pipeline 專案，請向專案負責人取得執行檔與目錄路徑後填入。
 
 ### 3. Google 認證
 
@@ -81,8 +88,7 @@ sheets: {
   },
 },
 
-// Google Chat（選填，留空不發送）
-googleChatWebhookUrl: '',
+// Google Chat Webhook URL 設定於 .env → GOOGLE_CHAT_WEBHOOK_URL
 ```
 
 ### 5. 部署 GAS
