@@ -7,8 +7,10 @@ Eslite 誠品線上 Astro 商品頁 SEO 每日自動化維運工具。
 - 執行 daily pipeline 下載 SSR / Combined 數據
 - 上傳 JSON 至 Google Drive
 - 觸發 Google Sheets GAS 更新
-- 產出每日分析報告（Markdown 檔案 + Google Chat 通知）
+- 產出每日分析報告（Markdown 檔案）
+- 產出週報（Markdown 上傳 Drive + Google Chat 精簡摘要 + 詳細報告連結）
 - 支援查詢模式：問問題取得數據分析
+- 認證失敗時自動觸發 `gcloud auth login` 重新驗證
 
 ---
 
@@ -16,11 +18,20 @@ Eslite 誠品線上 Astro 商品頁 SEO 每日自動化維運工具。
 
 ```bash
 # 每日更新（下載 → 上傳 → GAS → 分析報告）
-pnpm run daily
+pnpm daily
+
+# 從上傳 Drive 開始（跳過下載，資料已存在時使用）
+pnpm upload
+
+# 只跑每日分析（Step 4，讀本機 JSON）
+pnpm analysis
+
+# 手動產出週報（上傳 Drive + 發送 Google Chat）
+pnpm weekly
 
 # 查詢問題（需加引號）
-pnpm run query "昨天 SSR P95 是多少？"
-pnpm run query "比較 5/18 和 5/19 的慢渲染率"
+pnpm query "昨天 SSR P95 是多少？"
+pnpm query "比較 5/18 和 5/19 的慢渲染率"
 ```
 
 ---
@@ -72,8 +83,9 @@ gcloud auth login --enable-gdrive-access
 ```js
 // Google Drive 上傳目的地
 driveFolderIds: {
-  ssr:      'SSR 資料夾 ID',
-  combined: 'Combined 資料夾 ID',
+  ssr:           'SSR 資料夾 ID',
+  combined:      'Combined 資料夾 ID',
+  weeklyReports: '週報資料夾 ID',
 },
 
 // Google Sheets
@@ -105,16 +117,17 @@ sheets: {
 analysis-log/
 └── reports/
     ├── daily/
-    │   └── daily-YYYYMMDD.md     每日自動產出，不發 Google Chat
+    │   └── daily-YYYYMMDD.md     每日自動產出，儲存本機
     └── weekly/
-        └── weekly-YYYYMMDD.md    週五自動產出並發送至 Google Chat
+        └── weekly-YYYYMMDD.md    週五自動產出，同步上傳 Google Drive
 ```
 
 ### 週報說明
 
-- **執行時機**：每週五 `pnpm run daily` 時自動觸發
+- **執行時機**：每週五 `pnpm daily` 時自動觸發，或手動執行 `pnpm weekly`
 - **涵蓋範圍**：上週五到本週四（7 天）
-- **發送對象**：Google Chat（`config.js` → `googleChatWebhookUrl`）
+- **發送對象**：Google Chat 發精簡摘要 + 詳細週報 Drive 連結
+- **Drive 存放**：`config.js` → `driveFolderIds.weeklyReports`，自動設為 eslite.com 網域內可檢視
 - **對齊 PD 節奏**：PD 每週四更新 GSC 等 SEO 數據，週五週報可呈現最新完整狀態
 
 ---

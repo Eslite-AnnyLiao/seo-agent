@@ -280,7 +280,7 @@ async function _driveUpload(filePath, fileName, folderId) {
 
   await drive.permissions.create({
     fileId,
-    requestBody: { role: 'reader', type: 'anyone' },
+    requestBody: { role: 'reader', type: 'domain', domain: 'eslite.com' },
   });
 
   return `https://drive.google.com/file/d/${fileId}/view`;
