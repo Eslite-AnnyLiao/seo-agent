@@ -34,6 +34,17 @@ pnpm query "昨天 SSR P95 是多少？"
 pnpm query "比較 5/18 和 5/19 的慢渲染率"
 ```
 
+### Claude Code Skill（需安裝 Claude Code）
+
+在 Claude Code 中可直接使用 `/seo-query` 指令查詢，不另外消耗 API 額度：
+
+```
+/seo-query 昨天 SSR P95 是多少？
+/seo-query 比較 5/18 和 5/19 的慢渲染率
+```
+
+> 需在本專案目錄下開啟 Claude Code，且本機已有對應日期的 JSON 檔。
+
 ---
 
 ## 檔案說明
