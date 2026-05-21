@@ -27,7 +27,7 @@ export const config = {
       spreadsheetId: '1uf1gkqU0Pqh4slxiDKVdjVdtzZHBSSS9IkzaLUUuChk', // 商品頁 SSR 數據統計
       sheetName: '每日資料',
       gasWebhookUrl:
-        'https://script.google.com/a/macros/eslite.com/s/AKfycbx2GbsjrugbCZsRpiUXDXySehVL30lsx0jfq5T20l5Nvg8-K5U5v_9TvCecNLJY5cTt/exec',
+        'https://script.google.com/a/macros/eslite.com/s/AKfycbwwbwbz4stI1JyEMVk1VP8j4XuebUDoDHapnrcsoB_GI-CfuTQ56193tyFH97aBhray/exec',
     },
     combined: {
       spreadsheetId: '1y-XIf94_CmevHN28vrRI2zHAyAnjBDIJAS0VLJHahOU', // 全站流量總覽
