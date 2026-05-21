@@ -91,8 +91,32 @@ export const toolDefinitions = [
   },
 ];
 
+// ── 認證工具 ───────────────────────────────────
+function isAuthError(err) {
+  const msg = (err.message ?? JSON.stringify(err)).toLowerCase();
+  return msg.includes('invalid_rapt') || msg.includes('invalid_grant') || msg.includes('reauth');
+}
+
+function reAuthenticate() {
+  console.log('🔐 認證已過期，重新驗證中...');
+  execSync('gcloud auth login --enable-gdrive-access', { stdio: 'inherit' });
+  console.log('✅ 重新驗證完成，繼續執行');
+}
+
 // ── 工具執行 ───────────────────────────────────
 export async function executeTool(name, input) {
+  try {
+    return await runTool(name, input);
+  } catch (err) {
+    if (isAuthError(err)) {
+      reAuthenticate();
+      return await runTool(name, input);
+    }
+    throw err;
+  }
+}
+
+async function runTool(name, input) {
   switch (name) {
     case 'run_fetch': {
       const dates = input.dates?.length ? input.dates : [getYesterday()];
@@ -228,6 +252,38 @@ export function getYesterday() {
   const d = new Date();
   d.setDate(d.getDate() - 1);
   return formatDate(d);
+}
+
+export async function uploadReportToDrive(filePath, fileName, folderId) {
+  try {
+    return await _driveUpload(filePath, fileName, folderId);
+  } catch (err) {
+    if (isAuthError(err)) {
+      reAuthenticate();
+      return await _driveUpload(filePath, fileName, folderId);
+    }
+    throw err;
+  }
+}
+
+async function _driveUpload(filePath, fileName, folderId) {
+  const accessToken = execSync('gcloud auth print-access-token').toString().trim();
+  const authClient = new google.auth.OAuth2();
+  authClient.setCredentials({ access_token: accessToken });
+  const drive = google.drive({ version: 'v3', auth: authClient });
+
+  const { data: { id: fileId } } = await drive.files.create({
+    requestBody: { name: fileName, parents: [folderId] },
+    media: { mimeType: 'text/plain', body: createReadStream(filePath) },
+    fields: 'id',
+  });
+
+  await drive.permissions.create({
+    fileId,
+    requestBody: { role: 'reader', type: 'anyone' },
+  });
+
+  return `https://drive.google.com/file/d/${fileId}/view`;
 }
 
 export function getDatesToProcess() {

@@ -5,7 +5,7 @@
 
 import { writeFileSync, mkdirSync } from 'fs'
 import { resolve } from 'path'
-import { executeTool, getDatesToProcess } from './tools.js'
+import { executeTool, getDatesToProcess, uploadReportToDrive } from './tools.js'
 import { config } from './config.js'
 import { buildDailyAnalysisPrompt, buildWeeklyAnalysisPrompt } from './prompts.js'
 
@@ -17,51 +17,14 @@ function saveReport(dir, filename, content) {
   const path = resolve(dir, filename)
   writeFileSync(path, content, 'utf-8')
   console.log(`📄 報告已儲存：${path}`)
+  return path
 }
 
-function extractSsrStats(jsonStr) {
-  try {
-    const d      = JSON.parse(jsonStr)
-    const total  = d.data_source_stats?.valid_duration_records ?? d.data_source_stats?.total_records ?? 0
-    const slow   = d.render_time_stats?.count_above_3000to5000ms ?? 0
-    const abnorm = d.render_time_stats?.count_above_5000ms       ?? 0
-    const slowRate   = total > 0 ? parseFloat((slow   / total * 100).toFixed(2)) : null
-    const abnormRate = total > 0 ? parseFloat((abnorm / total * 100).toFixed(2)) : null
-    return {
-      total_records:          total,
-      average_ms:             d.render_time_stats?.average_ms    ?? null,
-      median_p50_ms:          d.render_time_stats?.median_p50_ms ?? null,
-      p95_ms:                 d.render_time_stats?.p95_ms        ?? null,
-      p99_ms:                 d.render_time_stats?.p99_ms        ?? null,
-      max_ms:                 d.render_time_stats?.max_ms        ?? null,
-      slow_render_rate_pct:   slowRate,
-      abnormal_render_rate_pct: abnormRate,
-      max_request_per_minute: d.per_minute_stats?.max_value      ?? null,
-    }
-  } catch { return null }
+function parseToolResult(jsonStr) {
+  try { return JSON.parse(jsonStr) } catch { return null }
 }
 
-function extractCombinedStats(jsonStr) {
-  try {
-    const d          = JSON.parse(jsonStr)
-    const ssrRecords  = d.data_source_stats?.ssr_records        ?? 0
-    const cacheHitSsr = d.cloudflare_cache_hit?.total_ssr_hits  ?? 0
-    const totalSsr    = ssrRecords + cacheHitSsr
-    const cacheHitRate = totalSsr > 0
-      ? parseFloat((cacheHitSsr / totalSsr * 100).toFixed(2))
-      : null
-    return {
-      total_records:          d.data_source_stats?.total_records ?? null,
-      ssg_records:            d.data_source_stats?.ssg_records   ?? null,
-      ssr_records:            ssrRecords,
-      max_request_per_minute: d.per_minute_stats?.max_value      ?? null,
-      cache_hit_ssr:          cacheHitSsr,
-      cache_hit_rate_pct:     cacheHitRate,
-    }
-  } catch { return null }
-}
-
-async function runDailyUpdate() {
+async function runDailyUpdate(skipFetch = false, skipToAnalysis = false) {
   const dates = getDatesToProcess()
   const today = dates.at(-1)
 
@@ -74,18 +37,27 @@ async function runDailyUpdate() {
   console.log(`📊 比較基準：${prevDate}\n`)
 
   // ── Step 1: 下載資料 ──────────────────────────
-  console.log('▶ Step 1：下載資料')
-  await executeTool('run_fetch', { dates })
+  if (!skipFetch) {
+    console.log('▶ Step 1：下載資料')
+    await executeTool('run_fetch', { dates })
+  } else {
+    console.log('⏭ Step 1：跳過下載')
+  }
 
   // ── Step 2: 上傳 Drive ────────────────────────
-  console.log('▶ Step 2：上傳 Drive')
-  const ssrUpload      = JSON.parse(await executeTool('upload_to_drive', { type: 'ssr',      dates }))
-  const combinedUpload = JSON.parse(await executeTool('upload_to_drive', { type: 'combined', dates }))
+  let ssrUpload, combinedUpload, ssrGas, combinedGas
+  if (!skipToAnalysis) {
+    console.log('▶ Step 2：上傳 Drive')
+    ssrUpload      = JSON.parse(await executeTool('upload_to_drive', { type: 'ssr',      dates }))
+    combinedUpload = JSON.parse(await executeTool('upload_to_drive', { type: 'combined', dates }))
 
-  // ── Step 3: 觸發 GAS ──────────────────────────
-  console.log('▶ Step 3：觸發 GAS')
-  const ssrGas      = JSON.parse(await executeTool('trigger_gas', { type: 'ssr',      dates }))
-  const combinedGas = JSON.parse(await executeTool('trigger_gas', { type: 'combined', dates }))
+    // ── Step 3: 觸發 GAS ──────────────────────────
+    console.log('▶ Step 3：觸發 GAS')
+    ssrGas      = JSON.parse(await executeTool('trigger_gas', { type: 'ssr',      dates }))
+    combinedGas = JSON.parse(await executeTool('trigger_gas', { type: 'combined', dates }))
+  } else {
+    console.log('⏭ Step 2-3：跳過上傳與 GAS')
+  }
 
   // ── Step 4: 每日分析 ──────────────────────────
   console.log('▶ Step 4：每日分析\n')
@@ -100,10 +72,10 @@ async function runDailyUpdate() {
     prev.setDate(prev.getDate() - 1)
     const prevStr = prev.toISOString().slice(0, 10).replace(/-/g, '')
 
-    const curSsr      = extractSsrStats(     await executeTool('read_json', { type: 'ssr',      date }))
-    const curCombined = extractCombinedStats(await executeTool('read_json', { type: 'combined', date }))
-    const prvSsr      = extractSsrStats(     await executeTool('read_json', { type: 'ssr',      date: prevStr }))
-    const prvCombined = extractCombinedStats(await executeTool('read_json', { type: 'combined', date: prevStr }))
+    const curSsr      = parseToolResult(await executeTool('read_json', { type: 'ssr',      date }))
+    const curCombined = parseToolResult(await executeTool('read_json', { type: 'combined', date }))
+    const prvSsr      = parseToolResult(await executeTool('read_json', { type: 'ssr',      date: prevStr }))
+    const prvCombined = parseToolResult(await executeTool('read_json', { type: 'combined', date: prevStr }))
 
     const qd = config.rules.qualifying_day
     const isQualifying = (curCombined?.total_records ?? 0) > qd.min_requests
@@ -147,9 +119,11 @@ Combined 前日：${JSON.stringify(prvCombined)}`)
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
   console.log(`✅ SEO 每日更新完成`)
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-  console.log(`📁 上傳：SSR ${ssrUpload.count} 筆、Combined ${combinedUpload.count} 筆`)
-  console.log(`⚙️  GAS SSR：${ssrGas.success ? '✅ 成功' : '❌ 失敗'}`)
-  console.log(`⚙️  GAS Combined：${combinedGas.success ? '✅ 成功' : '❌ 失敗'}`)
+  if (!skipToAnalysis) {
+    console.log(`📁 上傳：SSR ${ssrUpload.count} 筆、Combined ${combinedUpload.count} 筆`)
+    console.log(`⚙️  GAS SSR：${ssrGas.success ? '✅ 成功' : '❌ 失敗'}`)
+    console.log(`⚙️  GAS Combined：${combinedGas.success ? '✅ 成功' : '❌ 失敗'}`)
+  }
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
   console.log(summary)
 
@@ -177,8 +151,8 @@ async function runWeeklyReport() {
     const prevStr = prev.toISOString().slice(0, 10).replace(/-/g, '')
 
     try {
-      const curSsr      = extractSsrStats(     await executeTool('read_json', { type: 'ssr',      date }))
-      const curCombined = extractCombinedStats(await executeTool('read_json', { type: 'combined', date }))
+      const curSsr      = parseToolResult(await executeTool('read_json', { type: 'ssr',      date }))
+      const curCombined = parseToolResult(await executeTool('read_json', { type: 'combined', date }))
       const qd = config.rules.qualifying_day
       const isQualifying = (curCombined?.total_records ?? 0) > qd.min_requests
         && (curCombined?.max_request_per_minute ?? 0) > qd.min_peak_rpm
@@ -215,10 +189,12 @@ Combined：${JSON.stringify(curCombined)}`)
   const markdown  = mdMatch   ?? rawText
   const chat      = chatMatch ?? rawText
 
-  saveReport(WEEKLY_REPORTS_DIR, `weekly-${weekDates[weekDates.length - 1]}.md`, markdown)
+  const reportFileName = `weekly-${weekDates[weekDates.length - 1]}.md`
+  const reportPath = saveReport(WEEKLY_REPORTS_DIR, reportFileName, markdown)
 
   if (config.googleChatWebhookUrl) {
-    await sendToGoogleChat(`📋 *SEO 週報 ${dateRange}*\n\n${chat}`)
+    const reportUrl = await uploadReportToDrive(reportPath, reportFileName, config.driveFolderIds.weeklyReports)
+    await sendToGoogleChat(`📋 *SEO 週報 ${dateRange}*\n\n${chat}\n\n📄 詳細週報：${reportUrl}`)
   }
 }
 
@@ -236,7 +212,16 @@ async function sendToGoogleChat(text) {
 }
 
 async function main() {
-  await runDailyUpdate()
+  const skipFetch      = process.argv.includes('--from-upload')
+  const skipToAnalysis = process.argv.includes('--analysis-only')
+  const weeklyOnly     = process.argv.includes('--weekly')
+
+  if (weeklyOnly) {
+    await runWeeklyReport()
+    return
+  }
+
+  await runDailyUpdate(skipFetch || skipToAnalysis, skipToAnalysis)
 
   const isFriday = new Date().getDay() === 5
   if (isFriday) {

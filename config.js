@@ -18,6 +18,7 @@ export const config = {
   driveFolderIds: {
     ssr: '1tFUlJhjyEEWBtfbAGKZqOCLLCOO3xXE_',
     combined: '1rF66lEG52iOAUNgm__Dx7GMow6VYwkSY',
+    weeklyReports: '1e29H-bKSd6gPaYsFkx1DB2zMZyU4vkC9',
   },
 
   // ── Google Sheets（每月手動更新這裡）────────
@@ -51,6 +52,7 @@ export const config = {
       current_stage: 'P0',
       guid_digits: '15–19',
       rollback_trigger: '5xx rate > 0.5% 或 SSR P95 > 前階段觀測值 × 1.2',
+      start_date: '2026/05/18',
     },
     qualifying_day: {
       min_requests: 30000,   // 當日 Worker 請求數

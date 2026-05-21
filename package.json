@@ -4,6 +4,9 @@
   "type": "module",
   "scripts": {
     "daily": "node --env-file=.env daily-update.js",
+    "upload": "node --env-file=.env daily-update.js --from-upload",
+    "analysis": "node --env-file=.env daily-update.js --analysis-only",
+    "weekly": "node --env-file=.env daily-update.js --weekly",
     "query": "node --env-file=.env seo-agent.js"
   },
   "dependencies": {
