@@ -299,6 +299,13 @@ async function _driveUpload(filePath, fileName, folderId) {
 }
 
 export function getDatesToProcess() {
+  const dateArgs = []
+  const args = process.argv
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--date' && args[i + 1]) dateArgs.push(args[i + 1])
+  }
+  if (dateArgs.length > 0) return dateArgs
+
   const today = new Date();
   const isMonday = today.getDay() === 1;
   const daysBack = isMonday ? [3, 2, 1] : [1];
