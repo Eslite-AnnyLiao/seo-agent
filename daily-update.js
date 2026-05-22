@@ -62,8 +62,8 @@ async function runDailyUpdate(skipFetch = false, skipToAnalysis = false) {
   // ── Step 4: 每日分析 ──────────────────────────
   console.log('▶ Step 4：每日分析\n')
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY 環境變數未設定')
+  const authToken = process.env.ANTHROPIC_AUTH_TOKEN
+  if (!authToken) throw new Error('ANTHROPIC_AUTH_TOKEN 環境變數未設定')
 
   // 每個 date 各與前一天比較
   const sections = []
@@ -89,15 +89,15 @@ Combined 今日：${JSON.stringify(curCombined)}
 Combined 前日：${JSON.stringify(prvCombined)}`)
   }
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(`${process.env.ANTHROPIC_BASE_URL}/v1/messages`, {
     method:  'POST',
     headers: {
       'Content-Type':      'application/json',
-      'x-api-key':         apiKey,
+      'Authorization':     'Bearer ' + authToken,
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model:      'claude-haiku-4-5-20251001',
+      model:      'claude-4.6-sonnet',
       max_tokens: 3000,
       messages: [{
         role:    'user',
@@ -134,7 +134,7 @@ Combined 前日：${JSON.stringify(prvCombined)}`)
 async function runWeeklyReport() {
   console.log('\n📋 產出週報...\n')
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const authToken = process.env.ANTHROPIC_AUTH_TOKEN
 
   // 上週五到本週四（7 天）
   const weekDates = []
@@ -166,15 +166,15 @@ Combined：${JSON.stringify(curCombined)}`)
   }
 
   const dateRange = `${weekDates[0]} ~ ${weekDates[weekDates.length - 1]}`
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(`${process.env.ANTHROPIC_BASE_URL}/v1/messages`, {
     method:  'POST',
     headers: {
       'Content-Type':      'application/json',
-      'x-api-key':         apiKey,
+      'Authorization':     'Bearer ' + authToken,
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model:      'claude-haiku-4-5-20251001',
+      model:      'claude-4.6-sonnet',
       max_tokens: 3000,
       messages: [{ role: 'user', content: buildWeeklyAnalysisPrompt(sections, dateRange) }],
     }),
