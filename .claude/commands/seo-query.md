@@ -1,4 +1,13 @@
-查詢 Eslite 誠品線上 Astro 商品頁 SEO 數據。
+---
+name: seo-query
+description: "查詢 Eslite 誠品線上 Astro 商品頁 SSR 效能與 SEO 數據，包含 render time 統計、cache hit rate、404 異常率，以及各 bot 流量分析。"
+---
+
+# SEO Query — 商品頁 SSR 效能查詢
+
+查詢 Eslite 誠品線上 Astro 商品頁的 SSR 效能與 SEO 數據，解讀 render time 統計、cache hit rate 與異常率。
+
+---
 
 ## 背景知識
 
@@ -11,10 +20,10 @@ render_time_stats 只涵蓋 cache miss 的請求。
 
 ## 異常判斷規則
 
-- p95_ms > 3000ms → ⚠️ 警告
-- p99_ms > 5000ms → ⚠️ 警告
-- abnormal_render_rate_pct > 1% → 🚨 異常（5秒以上）
-- slow_render_rate_pct > 3% → ⚠️ 警告（3–5秒）
+- `render_time_stats.p95_ms` > 3000ms → ⚠️ 警告
+- `render_time_stats.p99_ms` > 5000ms → ⚠️ 警告
+- `render_time_stats.count_above_5000ms / render_time_stats.total_records` > 1% → 🚨 異常（5秒以上）
+- `render_time_stats.count_above_3000to5000ms / render_time_stats.total_records` > 3% → ⚠️ 警告（3–5秒）
 
 ## 資料路徑
 
@@ -24,29 +33,53 @@ render_time_stats 只涵蓋 cache miss 的請求。
 
 檔名格式：`ssr-product-log-YYYYMMDD_analysis.json` / `combined-YYYYMMDD_analysis.json`
 
-## 執行方式
+---
 
-1. 依問題決定要查的日期（今天或昨天），格式為 `YYYYMMDD`
-2. 用 Bash 取得 gcloud token 並搜尋對應檔案：
-   ```bash
-   TOKEN=$(gcloud auth print-access-token)
-   curl -s "https://www.googleapis.com/drive/v3/files?q='FOLDER_ID'+in+parents+and+name+contains+'YYYYMMDD'&fields=files(id,name)" \
-     -H "Authorization: Bearer $TOKEN"
-   ```
-3. 取得 file ID 後下載 JSON 內容：
-   ```bash
-   curl -s "https://www.googleapis.com/drive/v3/files/FILE_ID?alt=media" \
-     -H "Authorization: Bearer $TOKEN"
-   ```
-4. 根據數據回答問題，使用繁體中文，技術術語可保留英文
-5. 回答結尾加上：⚠️ 以上為 AI 建議，請工程師判斷後再行動。
+## 工作流程
 
-## 前置需求
+### Step 1：決定查詢日期
 
-使用者需以公司 Google 帳號登入 gcloud：
+預設查**昨天**的資料（log 記錄前一天），格式為 `YYYYMMDD`。若使用者明確指定日期則以指定日期為準。
+
+### Step 2：取得 gcloud token 並同時搜尋兩個資料夾
+
 ```bash
-gcloud auth login
+TOKEN=$(gcloud auth print-access-token)
+# SSR 資料夾
+curl -s "https://www.googleapis.com/drive/v3/files?q='1iXSr0Oc4lEJnSScPMSplI2z9bUNyGpVR'+in+parents+and+name+contains+'YYYYMMDD'&fields=files(id,name)" \
+  -H "Authorization: Bearer $TOKEN"
+# Combined 資料夾
+curl -s "https://www.googleapis.com/drive/v3/files?q='1w089WQQpTFmkRtLN6jwPE7nFpUzhL2Pi'+in+parents+and+name+contains+'YYYYMMDD'&fields=files(id,name)" \
+  -H "Authorization: Bearer $TOKEN"
 ```
+
+兩個資料夾都需要查：SSR 檔取 render time，Combined 檔取 cache hit rate 和 404 數據。
+
+### Step 3：下載 JSON 資料
+
+取得 file ID 後下載內容（SSR 和 Combined 各下載第一筆）：
+
+```bash
+curl -s "https://www.googleapis.com/drive/v3/files/FILE_ID?alt=media" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Step 4：解讀並回答問題
+
+根據數據與異常判斷規則回答使用者問題：
+- 使用繁體中文，技術術語可保留英文
+- 回答結尾加上：⚠️ 以上為 AI 建議，請工程師判斷後再行動。
+
+---
+
+## 注意事項
+
+- 使用者需以公司 Google 帳號登入 gcloud，否則 token 取得會失敗：`gcloud auth login`
+- `gcloud auth print-access-token` 取得的 token 有效期約 1 小時，過期需重新執行
+- render_time_stats 只涵蓋 cache miss（進入 Worker）的請求，非全部流量
+- cache hit rate 偏低在放量階段為預期行為，不代表異常
+
+---
 
 ## 使用者問題
 
