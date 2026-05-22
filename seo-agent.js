@@ -13,7 +13,7 @@ async function runAgent(userMessage) {
   const messages = [{ role: 'user', content: userMessage }]
   let   iter     = 0
   const MAX_ITER = 15
-  const model    = 'claude-sonnet-4-20250514'
+  const model    = 'claude-4.6-sonnet'
 
   console.log(`\n🤖 SEO Agent 啟動`)
   console.log(`📅 處理日期：${dates.join('、')}\n`)
@@ -21,8 +21,8 @@ async function runAgent(userMessage) {
   while (iter < MAX_ITER) {
     iter++
 
-    const apiKey = process.env.ANTHROPIC_API_KEY
-    if (!apiKey) throw new Error('ANTHROPIC_API_KEY 環境變數未設定')
+    const authToken = process.env.ANTHROPIC_AUTH_TOKEN
+    if (!authToken) throw new Error('ANTHROPIC_AUTH_TOKEN 環境變數未設定')
 
     const body = JSON.stringify({
       model,
@@ -35,11 +35,11 @@ async function runAgent(userMessage) {
     let response
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        response = await fetch('https://api.anthropic.com/v1/messages', {
+        response = await fetch(`${process.env.ANTHROPIC_BASE_URL}/v1/messages`, {
           method:  'POST',
           headers: {
             'Content-Type':      'application/json',
-            'x-api-key':         apiKey,
+            'Authorization':     'Bearer ' + authToken,
             'anthropic-version': '2023-06-01',
           },
           body,
