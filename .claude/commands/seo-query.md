@@ -18,18 +18,35 @@ render_time_stats 只涵蓋 cache miss 的請求。
 
 ## 資料路徑
 
-JSON 資料位於 `/Users/liaoliting/Webserver/analysis-log` 下：
-- SSR：`daily-analysis-result/astro/datadog-export/ssr/`
-- Combined：`daily-analysis-result/astro/datadog-export/combined/`
+資料存放於 Google Drive 固定資料夾（不隨月份變動）：
+- SSR folder ID：`1iXSr0Oc4lEJnSScPMSplI2z9bUNyGpVR`
+- Combined folder ID：`1w089WQQpTFmkRtLN6jwPE7nFpUzhL2Pi`
 
 檔名格式：`ssr-product-log-YYYYMMDD_analysis.json` / `combined-YYYYMMDD_analysis.json`
 
 ## 執行方式
 
-1. 用 Bash 找出今天或昨天對應的 JSON 檔（依問題決定日期）
-2. 用 Read 讀取 JSON 內容
-3. 根據數據回答問題，使用繁體中文，技術術語可保留英文
-4. 回答結尾加上：⚠️ 以上為 AI 建議，請工程師判斷後再行動。
+1. 依問題決定要查的日期（今天或昨天），格式為 `YYYYMMDD`
+2. 用 Bash 取得 gcloud token 並搜尋對應檔案：
+   ```bash
+   TOKEN=$(gcloud auth print-access-token)
+   curl -s "https://www.googleapis.com/drive/v3/files?q='FOLDER_ID'+in+parents+and+name+contains+'YYYYMMDD'&fields=files(id,name)" \
+     -H "Authorization: Bearer $TOKEN"
+   ```
+3. 取得 file ID 後下載 JSON 內容：
+   ```bash
+   curl -s "https://www.googleapis.com/drive/v3/files/FILE_ID?alt=media" \
+     -H "Authorization: Bearer $TOKEN"
+   ```
+4. 根據數據回答問題，使用繁體中文，技術術語可保留英文
+5. 回答結尾加上：⚠️ 以上為 AI 建議，請工程師判斷後再行動。
+
+## 前置需求
+
+使用者需以公司 Google 帳號登入 gcloud：
+```bash
+gcloud auth login
+```
 
 ## 使用者問題
 

@@ -165,6 +165,18 @@ async function runTool(name, input) {
         });
         uploaded.push(res.data.id);
         console.log(`  ↑ [${type}] ${fileName} → Drive`);
+
+        await drive.files.create({
+          requestBody: {
+            name: fileName,
+            parents: [config.seoAgentFolderIds[type]],
+          },
+          media: {
+            mimeType: 'application/json',
+            body: createReadStream(filePath),
+          },
+        });
+        console.log(`  ↑ [${type}] ${fileName} → Drive (seo-agent)`);
       }
 
       return JSON.stringify({ success: true, type, count: uploaded.length });

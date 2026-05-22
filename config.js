@@ -21,6 +21,12 @@ export const config = {
     weeklyReports: '1e29H-bKSd6gPaYsFkx1DB2zMZyU4vkC9',
   },
 
+  // ── seo-agent skill 用的固定資料夾（不隨月份換）────
+  seoAgentFolderIds: {
+    ssr: '1iXSr0Oc4lEJnSScPMSplI2z9bUNyGpVR',
+    combined: '1w089WQQpTFmkRtLN6jwPE7nFpUzhL2Pi',
+  },
+
   // ── Google Sheets（每月手動更新這裡）────────
   sheets: {
     ssr: {
