@@ -98,7 +98,7 @@ Combined 前日：${JSON.stringify(prvCombined)}`)
     },
     body: JSON.stringify({
       model:      'claude-4.6-sonnet',
-      max_tokens: 3000,
+      max_tokens: 5000,
       messages: [{
         role:    'user',
         content: buildDailyAnalysisPrompt(sections),
@@ -108,13 +108,8 @@ Combined 前日：${JSON.stringify(prvCombined)}`)
 
   if (!res.ok) throw new Error(`API 錯誤 ${res.status}: ${await res.text()}`)
 
-  const data     = await res.json()
-  const rawText  = data.content.find(b => b.type === 'text')?.text ?? ''
-  const mdMatch   = rawText.split('===MARKDOWN===')[1]?.split('===CHAT===')[0]?.trim()
-  const chatMatch = rawText.split('===CHAT===')[1]?.trim()
-  const markdown  = mdMatch   ?? rawText
-  const chat      = chatMatch ?? rawText
-  const summary = markdown
+  const data    = await res.json()
+  const summary = data.content.find(b => b.type === 'text')?.text?.trim() ?? ''
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
   console.log(`✅ SEO 每日更新完成`)
@@ -175,7 +170,7 @@ Combined：${JSON.stringify(curCombined)}`)
     },
     body: JSON.stringify({
       model:      'claude-4.6-sonnet',
-      max_tokens: 3000,
+      max_tokens: 4000,
       messages: [{ role: 'user', content: buildWeeklyAnalysisPrompt(sections, dateRange) }],
     }),
   })

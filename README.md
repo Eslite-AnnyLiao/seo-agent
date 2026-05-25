@@ -14,6 +14,11 @@ Eslite 誠品線上 Astro 商品頁 SEO 每日自動化維運工具。
 
 ---
 
+> **遠端使用請先連 VPN**
+> 公司 LiteLLM proxy（`litellm.in.eslite.com`）為內網位址，非公司網路環境下須開啟 VPN 才能正常執行。
+
+---
+
 ## 使用方式
 
 ```bash
