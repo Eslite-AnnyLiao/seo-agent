@@ -103,9 +103,16 @@ async function runAgent(userMessage) {
 }
 
 // ── CLI 入口 ───────────────────────────────────
-const userInput = process.argv.slice(2).join(' ')
+const rawArgs = process.argv.slice(2)
+const filteredArgs = []
+for (let i = 0; i < rawArgs.length; i++) {
+  if (rawArgs[i] === '--date' && rawArgs[i + 1]) { i++; continue }
+  filteredArgs.push(rawArgs[i])
+}
+const userInput = filteredArgs.join(' ')
 if (!userInput) {
   console.error('請輸入查詢問題，例如：npm run query 昨天 SSR P95 多少？')
+  console.error('可加 --date YYYYMMDD 指定日期，例如：npm run query -- --date 20260520 SSR P95 多少？')
   process.exit(1)
 }
 runAgent(userInput).catch(err => {

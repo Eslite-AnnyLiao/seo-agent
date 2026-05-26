@@ -39,6 +39,27 @@ pnpm query "昨天 SSR P95 是多少？"
 pnpm query "比較 5/18 和 5/19 的慢渲染率"
 ```
 
+### 指定日期
+
+加上 `--date YYYYMMDD` 可指定要處理的日期，不帶則維持預設邏輯（昨天；週一則補回週五～週日）。
+
+```bash
+# 指定日期完整流程（下載 → 上傳 → 分析）
+pnpm daily -- --date 20260520
+
+# 指定日期上傳
+pnpm upload -- --date 20260520
+
+# 指定日期分析
+pnpm analysis -- --date 20260520
+
+# 指定日期查詢
+pnpm query -- --date 20260520 "SSR P95 是多少？"
+
+# 一次指定多天
+pnpm daily -- --date 20260520 --date 20260521
+```
+
 ### Claude Code Skill（需安裝 Claude Code）
 
 在 Claude Code 中可直接使用 `/seo-query` 指令查詢，不另外消耗 API 額度：
