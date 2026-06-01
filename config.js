@@ -27,6 +27,12 @@ export const config = {
     combined: '1w089WQQpTFmkRtLN6jwPE7nFpUzhL2Pi',
   },
 
+  // ── GSC Tracking Sheet（固定，不隨月份換）────
+  gscSheet: {
+    spreadsheetId: '1XKaRKwchznWq3CKYLGo8TRPW4QZ3dEqBLEZSk1G_rRQ',
+    sheetName: 'GSC Tracking',
+  },
+
   // ── Google Sheets（每月手動更新這裡）────────
   sheets: {
     ssr: {
@@ -54,6 +60,16 @@ export const config = {
       abnormal_render_rate: 1,    // 異常渲染率（%）count_above_5000ms / total_records
       slow_render_rate: 3,        // 慢渲染率（%）count_above_3000to5000ms / total_records
     },
+    cache: {
+      hit_rate_warn_pct: 5,       // cache hit rate 低於此值 → ⚠️ 警告
+      hit_rate_abnormal_pct: 3,   // cache hit rate 低於此值 → 🚨 異常
+    },
+    error404: {
+      baseline_pct: 8,            // 目前觀測基準（放量階段實測均值，供比對用）
+      healthy_pct: 3,             // SEO 健康目標（每次回答須顯示現況 vs 此目標）
+      warn_pct: 10,               // 404 率高於此值 → ⚠️ 警告
+      abnormal_pct: 15,           // 404 率高於此值 → 🚨 異常
+    },
     rollout: {
       current_stage: 'P0',
       guid_digits: '15–19',
@@ -61,7 +77,7 @@ export const config = {
       start_date: '2026/05/18',
     },
     qualifying_day: {
-      min_requests: 30000,   // 當日 Worker 請求數
+      min_requests: 25000,   // 當日 Worker 請求數
       min_peak_rpm: 100,     // 當日尖峰 RPM
     },
   },

@@ -89,6 +89,24 @@ export const toolDefinitions = [
       required: ['type'],
     },
   },
+  {
+    name: 'read_gsc_sheet',
+    description: [
+      '讀取 GSC Tracking Google Sheet 的週期數據，包含全部 GSC 指標（曝光、點擊、Coverage、5XX 錯誤、CWV 等）。',
+      '資料粒度為週（每週約週四更新），可與 SSR 每日數據進行跨週比對。',
+      '回傳格式：{ dates: ["5/21","5/14",...], metrics: { "曝光": [val,...], ... } }，日期由新到舊排列。',
+    ].join(' '),
+    input_schema: {
+      type: 'object',
+      properties: {
+        weeks: {
+          type: 'number',
+          description: '要回傳最近幾週的資料（預設 8 週）',
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 // ── 認證工具 ───────────────────────────────────
@@ -233,21 +251,66 @@ async function runTool(name, input) {
       }
 
       if (type === 'combined') {
-        const ssrRecords  = raw.data_source_stats?.ssr_records       ?? 0
-        const cacheHitSsr = raw.cloudflare_cache_hit?.total_ssr_hits ?? 0
-        const totalSsr    = ssrRecords + cacheHitSsr
+        const ssrRecords   = raw.data_source_stats?.ssr_records       ?? 0
+        const cacheHitSsr  = raw.cloudflare_cache_hit?.total_ssr_hits ?? 0
+        const totalSsr     = ssrRecords + cacheHitSsr
+        const totalRecords = raw.data_source_stats?.total_records ?? null
+        const total404     = raw.errors_404?.total_404_count ?? null
         return JSON.stringify({
-          date:                   target.match(/\d{8}/)?.[0],
-          total_records:          raw.data_source_stats?.total_records ?? null,
-          ssg_records:            raw.data_source_stats?.ssg_records   ?? null,
-          ssr_records:            ssrRecords,
-          max_request_per_minute: raw.per_minute_stats?.max_value      ?? null,
-          cache_hit_ssr:          cacheHitSsr,
-          cache_hit_rate_pct:     totalSsr > 0 ? parseFloat((cacheHitSsr / totalSsr * 100).toFixed(2)) : null,
+          date:                    target.match(/\d{8}/)?.[0],
+          total_records:           totalRecords,
+          ssg_records:             raw.data_source_stats?.ssg_records   ?? null,
+          ssr_records:             ssrRecords,
+          max_request_per_minute:  raw.per_minute_stats?.max_value      ?? null,
+          cache_hit_ssr:           cacheHitSsr,
+          cache_hit_rate_pct:      totalSsr > 0 ? parseFloat((cacheHitSsr / totalSsr * 100).toFixed(2)) : null,
+          total_404_count:         total404,
+          affected_product_count:  raw.errors_404?.affected_product_count ?? null,
+          error_404_rate_pct:      (totalRecords > 0 && total404 !== null) ? parseFloat((total404 / totalRecords * 100).toFixed(2)) : null,
         })
       }
 
       return JSON.stringify({ error: `未知 type: ${type}` });
+    }
+
+    case 'read_gsc_sheet': {
+      const weeks = input.weeks ?? 8;
+      const { spreadsheetId, sheetName } = config.gscSheet;
+
+      const accessToken = execSync('gcloud auth print-access-token').toString().trim();
+      const authClient = new google.auth.OAuth2();
+      authClient.setCredentials({ access_token: accessToken });
+      const sheets = google.sheets({ version: 'v4', auth: authClient });
+
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${sheetName}'!A1:AZ200`,
+      });
+
+      const rows = res.data.values ?? [];
+      if (rows.length === 0) return JSON.stringify({ error: 'Sheet 無資料' });
+
+      // Row 0 = header: [label, 月趨勢, 週變化, 最大, 最小, Sparkline, date1, date2, ...]
+      const headerRow = rows[0];
+      const dateStartCol = 6; // column G onwards
+      const allDates = headerRow.slice(dateStartCol);
+      const slicedDates = allDates.slice(0, weeks);
+
+      const metrics = {};
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const label = row[0];
+        if (!label) continue;
+        const values = row.slice(dateStartCol, dateStartCol + weeks).map((v) => {
+          if (v === undefined || v === '') return null;
+          // 移除千分位逗號後轉數字
+          const n = Number(v.replace(/,/g, ''));
+          return isNaN(n) ? v : n;
+        });
+        metrics[label] = values;
+      }
+
+      return JSON.stringify({ dates: slicedDates, metrics });
     }
 
     default:

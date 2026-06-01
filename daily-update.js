@@ -12,6 +12,7 @@ import { buildDailyAnalysisPrompt, buildWeeklyAnalysisPrompt } from './prompts.j
 const DAILY_REPORTS_DIR  = resolve(config.analysisLogPath, 'reports', 'daily')
 const WEEKLY_REPORTS_DIR = resolve(config.analysisLogPath, 'reports', 'weekly')
 
+
 function saveReport(dir, filename, content) {
   mkdirSync(dir, { recursive: true })
   const path = resolve(dir, filename)
@@ -160,6 +161,13 @@ Combined：${JSON.stringify(curCombined)}`)
     }
   }
 
+  let gscData = null
+  try {
+    gscData = parseToolResult(await executeTool('read_gsc_sheet', {}))
+  } catch {
+    console.warn('⚠️ GSC Sheet 讀取失敗，週報將略過 GSC 分析')
+  }
+
   const dateRange = `${weekDates[0]} ~ ${weekDates[weekDates.length - 1]}`
   const res = await fetch(`${process.env.ANTHROPIC_BASE_URL}/v1/messages`, {
     method:  'POST',
@@ -170,8 +178,8 @@ Combined：${JSON.stringify(curCombined)}`)
     },
     body: JSON.stringify({
       model:      'claude-4.6-sonnet',
-      max_tokens: 4000,
-      messages: [{ role: 'user', content: buildWeeklyAnalysisPrompt(sections, dateRange) }],
+      max_tokens: 8000,
+      messages: [{ role: 'user', content: buildWeeklyAnalysisPrompt(sections, dateRange, gscData) }],
     }),
   })
 
