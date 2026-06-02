@@ -29,7 +29,7 @@ render_time_stats 只涵蓋 cache miss 的請求。
 - `render_time_stats.count_above_3000to5000ms / render_time_stats.total_records` > {rules.above3to5sWarnPct}% → ⚠️ 警告（3–5秒）
 
 **Cache Hit Rate**（cache_hits / 總請求數）
-- < {rules.cacheHitRateWarnPct}% → ⚠️ 警告（P0 放量階段基準約 7–9%）
+- < {rules.cacheHitRateWarnPct}% → ⚠️ 警告（P1 放量階段基準約 7–9%）
 - < {rules.cacheHitRateAbnormalPct}% → 🚨 異常
 
 **404 Rate**（404 次數 / SSR miss 總數）
