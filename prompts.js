@@ -12,8 +12,8 @@ function sharedBackground() {
 SSR 服務只有爬蟲（如 Googlebot）會進入，不會有真實使用者體驗。
 因此 SSR 效能問題不影響使用者體驗，但會直接影響 SEO 品質（索引速度、爬取預算、排名）。
 渲染架構使用 Cloudflare Worker，沒有 Pod 或傳統伺服器，不適用擴容（scale up/out）建議。效能問題方向是優化 API 或 cache 策略。
-目前處於 ${config.rules.rollout.current_stage} 導流階段（GUID 尾兩位 ${config.rules.rollout.guid_digits}，約 5% 流量），cache hit rate 偏低是預期行為，不需告警。
-Astro SSR 目前只處理約 5% 的 Googlebot 流量，其餘 95% 走舊架構，因此 SSR 效能問題對整體 GSC 指標（曝光、點擊、CWV 等）的影響有限，分析時不應將 GSC 指標的明顯波動直接歸因於 Astro。
+目前處於 ${config.rules.rollout.current_stage} 導流階段（GUID 尾兩位 ${config.rules.rollout.guid_digits}，約 ${config.rules.rollout.traffic_percent}% 流量），cache hit rate 偏低是預期行為，不需告警。
+Astro SSR 目前只處理約 ${config.rules.rollout.traffic_percent}% 的 Googlebot 流量，其餘 ${100 - config.rules.rollout.traffic_percent}% 走舊架構，因此 SSR 效能問題對整體 GSC 指標（曝光、點擊、CWV 等）的影響有限，分析時不應將 GSC 指標的明顯波動直接歸因於 Astro。
 SSG 筆數少是正常的，SSG 只針對熱門商品（每日排行榜），不需建議擴大範圍。
 ssr_records = 實際打到 Worker 的請求數（cache miss）；cache_hit_ssr = Cloudflare edge 直接回應（未進 Worker）。
 cache_hit_rate_pct = cache_hit_ssr / (cache_hit_ssr + ssr_records)，已預先計算，直接使用。
@@ -34,7 +34,7 @@ Render Time：
 - slow_render_rate_pct > ${config.rules.ssr.slow_render_rate}% → ⚠️ 警告（慢渲染率，3-5秒）
 
 Cache Hit Rate（cache_hits / 總請求數）：
-- < ${config.rules.cache.hit_rate_warn_pct}% → ⚠️ 警告（P0 放量階段基準約 7–9%）
+- < ${config.rules.cache.hit_rate_warn_pct}% → ⚠️ 警告（${config.rules.rollout.current_stage} 放量階段基準約 7–9%）
 - < ${config.rules.cache.hit_rate_abnormal_pct}% → 🚨 異常
 
 404 Rate（404 次數 / SSR miss 總數）：
@@ -75,7 +75,7 @@ ${JSON.stringify(gscData)}
 GSC 分析說明：
 - 資料為週粒度，欄位順序：A=指標名稱、B=月趨勢、C=週變化、D=歷史最大、E=歷史最小、G=最新週數值
 - 重點關注指標：曝光、點擊、/product曝光、/product點擊、有效(Coverage)、錯誤(伺服器錯誤5XX)、重複頁面、手機CWV三段
-- Astro 僅佔 ~${config.rules.rollout.current_stage === 'P0' ? '5' : '?'}% 流量，GSC 波動不可直接歸因於 Astro，需說明影響有限
+- Astro 僅佔 ~${config.rules.rollout.traffic_percent}% 流量，GSC 波動不可直接歸因於 Astro，需說明影響有限
 - 若 /product 曝光或點擊有明顯週變化，需與 SSR 效能數據交叉比對`
     : '【GSC 週期數據】本週 GSC 資料讀取失敗，略過 GSC 分析。'
 
@@ -139,11 +139,11 @@ ${sharedBackground()}
 【GSC 資料使用說明】
 - GSC 資料為週粒度，日期欄代表該週結束日（週四），每週四左右更新
 - 2026/05/18 放量開始前 SSR 流量為零，GSC 指標變化需以放量週（5/21 當週）為分水嶺比對
-- 目前 Astro 僅佔 ~5% 流量，SSR 效能變化對 GSC 整體指標影響非常有限，比對結果偏低靈敏度是預期現象，不代表 Astro 無影響，而是訊號太小
+- 目前 Astro 僅佔 ~${config.rules.rollout.traffic_percent}% 流量，SSR 效能變化對 GSC 整體指標影響非常有限，比對結果偏低靈敏度是預期現象，不代表 Astro 無影響，而是訊號太小
 - 比對 SSR 效能與 GSC 時：以該週包含的日期範圍對應 SSR 每日資料的均值或最差值
 - 常見比對組合：
-    • SSR abnormal_render_rate ↔ GSC 5XX 錯誤（伺服器錯誤5XX）— 但注意 SSR 5XX 只佔全部爬蟲流量的 ~5%
-    • SSR P95/P99 render_time ↔ GSC 手機 CWV 慢/中/快 — 5% 流量影響 CWV 分數有限，大幅惡化才會反映
+    • SSR abnormal_render_rate ↔ GSC 5XX 錯誤（伺服器錯誤5XX）— 但注意 SSR 5XX 只佔全部爬蟲流量的 ~${config.rules.rollout.traffic_percent}%
+    • SSR P95/P99 render_time ↔ GSC 手機 CWV 慢/中/快 — ${config.rules.rollout.traffic_percent}% 流量影響 CWV 分數有限，大幅惡化才會反映
     • SSR records（爬蟲流量）↔ GSC /product曝光、/product點擊
     • cache_hit_rate_pct 提升 ↔ 手機 CWV 改善幅度（訊號微弱）
 

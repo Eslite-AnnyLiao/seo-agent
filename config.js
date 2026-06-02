@@ -71,10 +71,11 @@ export const config = {
       abnormal_pct: 15,           // 404 率高於此值 → 🚨 異常
     },
     rollout: {
-      current_stage: 'P0',
-      guid_digits: '15–19',
+      current_stage: 'P1',
+      guid_digits: '12–19',
+      traffic_percent: 8,
       rollback_trigger: '5xx rate > 0.5% 或 SSR P95 > 前階段觀測值 × 1.2',
-      start_date: '2026/05/18',
+      start_date: '2026/06/02',
     },
     qualifying_day: {
       min_requests: 25000,   // 當日 Worker 請求數
