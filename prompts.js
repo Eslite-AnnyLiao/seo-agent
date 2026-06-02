@@ -58,6 +58,7 @@ ${sharedBackground()}
 放量觀察期以累積 5 個觀測達標日為準（門檻：請求數 > ${config.rules.qualifying_day.min_requests}、尖峰 RPM > ${config.rules.qualifying_day.min_peak_rpm}）。
 每天資料開頭已標注是否為觀測達標日，請在報告中顯示此狀態。
 未達觀測達標日時，只需標注「不計入觀測」，不需建議放量或加量。放量決策由人工判斷。
+${config.rules.rollout.start_date} 為本階段（${config.rules.rollout.current_stage}）切換日，當天流量為前後兩個階段混合，數據不具代表性，**不計入觀測達標日**。
 
 ${sections.join('\n\n')}
 
