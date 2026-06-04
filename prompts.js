@@ -68,7 +68,12 @@ ${sections.join('\n\n')}
 }
 
 // ── 週報 prompt（weekly report 用）──────────────
-export function buildWeeklyAnalysisPrompt(sections, dateRange, gscData = null) {
+export function buildWeeklyAnalysisPrompt(sections, dateRange, gscData = null, crawlerStats = null) {
+  const crawlerSection = crawlerStats
+    ? `【SEO 爬蟲統計（本週加總，已分類）】
+${JSON.stringify(crawlerStats)}`
+    : '【SEO 爬蟲統計】本週爬蟲資料讀取失敗，略過。'
+
   const gscSection = gscData
     ? `【GSC 週期數據】
 以下為 GSC Tracking Sheet 原始資料（週粒度，最新週在最左）：
@@ -94,6 +99,8 @@ ${sharedBackground()}
 
 ${sections.join('\n\n')}
 
+${crawlerSection}
+
 ${gscSection}
 
 請依以下格式輸出，中間用分隔標記區分，不要其他文字：
@@ -102,20 +109,22 @@ ${gscSection}
 （週報，使用 Markdown 格式：標題用 ##、表格、**粗體**）
 （包含以下區塊，依序排列：
   1. 本週整體 SSR 效能趨勢（表格：P95/P99/異常率/慢渲染率，標注 ✅⚠️🚨）
-  2. 流量趨勢（cache hit rate、請求量）
+  2. 流量趨勢（請求量週趨勢）
   3. 404 狀況（本週均值，標注與 SEO 目標 ${config.rules.error404.healthy_pct}% 的落差）
   4. GSC 指標摘要（有資料時才輸出：曝光/點擊週變化、/product 表現、Coverage、5XX、手機CWV）
-  5. 異常告警摘要（依日期由舊到新排序，無異常則寫「本週無異常」）
-  6. 觀測達標日統計
-  7. 本週結論）
+  5. SEO 爬蟲統計（使用已提供的 crawlerStats，依請求量排序列表；標注各組佔比；AI 系爬蟲單獨強調）
+  6. 異常告警摘要（依日期由舊到新排序，無異常則寫「本週無異常」）
+  7. 觀測達標日統計
+  8. 本週結論）
 （注意事項區塊結尾加上：> ⚠️ 以上注意事項為 AI 建議，請由工程師判斷後再行動。）
 ===CHAT===
 （Google Chat 精簡摘要：粗體用 *文字*（單星號）、不使用表格、分隔線用 ────────────）
 （只包含以下四個區塊，每區塊 3~5 行：
   1. 本週重點（流量趨勢、效能概況）
   2. GSC 摘要（有資料時：/product 曝光與點擊週變化、Coverage 有效頁數變化、CWV 慢頁數變化，每項附具體數字；無資料則略過）
-  3. 異常告警（依日期由舊到新，無異常則寫「無異常」）
-  4. 本週結論與建議）
+  3. SEO 爬蟲統計（前三名 bot 與請求量，標注 AI 爬蟲佔比）
+  4. 異常告警（依日期由舊到新，無異常則寫「無異常」）
+  5. 本週結論與建議）
 （注意事項結尾加上：⚠️ 以上為 AI 建議，請工程師判斷後再行動。）`
 }
 

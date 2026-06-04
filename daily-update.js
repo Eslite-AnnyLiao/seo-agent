@@ -3,15 +3,55 @@
 // 固定流程：fetch → upload → GAS → 每日分析
 // ─────────────────────────────────────────────
 
-import { writeFileSync, mkdirSync } from 'fs'
+import { writeFileSync, mkdirSync, readdirSync, readFileSync } from 'fs'
 import { resolve } from 'path'
-import { executeTool, getDatesToProcess, uploadReportToDrive } from './tools.js'
+import { executeTool, getDatesToProcess, uploadReportToDrive, extractBotName } from './tools.js'
 import { config } from './config.js'
 import { buildDailyAnalysisPrompt, buildWeeklyAnalysisPrompt } from './prompts.js'
 
 const DAILY_REPORTS_DIR  = resolve(config.analysisLogPath, 'reports', 'daily')
 const WEEKLY_REPORTS_DIR = resolve(config.analysisLogPath, 'reports', 'weekly')
 
+
+function aggregateCrawlerStats(weekDates) {
+  const totals = {}
+  for (const date of weekDates) {
+    try {
+      const dir = resolve(config.analysisLogPath, config.jsonPaths.combined)
+      const file = readdirSync(dir).find(f => f.endsWith('.json') && f.includes(date))
+      if (!file) continue
+      const raw = JSON.parse(readFileSync(resolve(dir, file), 'utf-8'))
+      for (const entry of raw.user_agent_analysis?.user_agent_ranking ?? []) {
+        const bot = extractBotName(entry.userAgent)
+        totals[bot] = (totals[bot] ?? 0) + entry.total
+      }
+    } catch { /* 跳過缺漏日期 */ }
+  }
+
+  const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0)
+  const classify = bot => {
+    const b = bot.toLowerCase()
+    if (b.includes('google')) return 'Google系'
+    if (['chatgpt', 'gptbot', 'oai-searchbot', 'claudebot', 'youbot', 'perplexitybot'].some(x => b.includes(x))) return 'AI系'
+    if (['ahrefsbot', 'mj12bot', 'semrushbot', 'dotbot', 'petalbot', 'rogerbot'].some(x => b.includes(x))) return 'SEO工具'
+    return '其他'
+  }
+
+  const bots = Object.entries(totals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([bot, total]) => ({
+      bot,
+      group: classify(bot),
+      total,
+      pct: grandTotal > 0 ? parseFloat((total / grandTotal * 100).toFixed(1)) : 0,
+    }))
+
+  const groupTotals = {}
+  for (const { group, total } of bots) groupTotals[group] = (groupTotals[group] ?? 0) + total
+
+  return { bots, groupTotals, grandTotal }
+}
 
 function saveReport(dir, filename, content) {
   mkdirSync(dir, { recursive: true })
@@ -172,6 +212,7 @@ Combined：${JSON.stringify(curCombined)}`)
     console.warn('⚠️ GSC Sheet 讀取失敗，週報將略過 GSC 分析')
   }
 
+  const crawlerStats = aggregateCrawlerStats(weekDates)
   const dateRange = `${weekDates[0]} ~ ${weekDates[weekDates.length - 1]}`
   const res = await fetch(`${process.env.ANTHROPIC_BASE_URL}/v1/messages`, {
     method:  'POST',
@@ -183,7 +224,7 @@ Combined：${JSON.stringify(curCombined)}`)
     body: JSON.stringify({
       model:      'claude-4.6-sonnet',
       max_tokens: 8000,
-      messages: [{ role: 'user', content: buildWeeklyAnalysisPrompt(sections, dateRange, gscData) }],
+      messages: [{ role: 'user', content: buildWeeklyAnalysisPrompt(sections, dateRange, gscData, crawlerStats) }],
     }),
   })
 

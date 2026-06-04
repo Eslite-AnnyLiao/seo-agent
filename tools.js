@@ -318,6 +318,15 @@ async function runTool(name, input) {
   }
 }
 
+// ── Bot 名稱解析 ────────────────────────────────
+export function extractBotName(ua) {
+  const m = ua.match(/compatible;\s*([\w\-]+(?:\/[\d.]+)?)/i)
+    ?? ua.match(/\(([\w\-]*[Bb]ot\/[\d.]+)/i)
+    ?? ua.match(/^(meta-[\w]+)/i)
+    ?? ua.match(/^([\w\-]+\/[\d.]+)/i)
+  return m ? m[1] : ua.slice(0, 40)
+}
+
 // ── 日期工具 ───────────────────────────────────
 function formatDate(d) {
   return d.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
