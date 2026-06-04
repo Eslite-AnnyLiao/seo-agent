@@ -123,7 +123,11 @@ Combined 前日：${JSON.stringify(prvCombined)}`)
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
   console.log(summary)
 
-  saveReport(DAILY_REPORTS_DIR, `daily-${today}.md`, summary)
+  const reportFileName = `daily-${today}.md`
+  const reportPath = saveReport(DAILY_REPORTS_DIR, reportFileName, summary)
+
+  const reportUrl = await uploadReportToDrive(reportPath, reportFileName, config.driveFolderIds.dailyReports)
+  console.log(`☁️  日報已上傳：${reportUrl}`)
 }
 
 // ── 週報（週五執行）────────────────────────────

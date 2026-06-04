@@ -19,6 +19,7 @@ export const config = {
     ssr: '1tFUlJhjyEEWBtfbAGKZqOCLLCOO3xXE_',
     combined: '1rF66lEG52iOAUNgm__Dx7GMow6VYwkSY',
     weeklyReports: '1e29H-bKSd6gPaYsFkx1DB2zMZyU4vkC9',
+    dailyReports: '1WOOPHMT3NjLZCS3AH4DpCuwyvNiB4EXa',
   },
 
   // ── seo-agent skill 用的固定資料夾（不隨月份換）────
