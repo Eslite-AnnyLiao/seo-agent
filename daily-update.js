@@ -171,15 +171,18 @@ Combined 前日：${JSON.stringify(prvCombined)}`)
 }
 
 // ── 週報（週五執行）────────────────────────────
-async function runWeeklyReport() {
+async function runWeeklyReport(baseDate = null) {
   console.log('\n📋 產出週報...\n')
 
   const authToken = process.env.ANTHROPIC_AUTH_TOKEN
 
-  // 上週五到本週四（7 天）
+  // 以 baseDate（或執行當下）為錨點，往前推 7 天
+  const base = baseDate
+    ? new Date(baseDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'))
+    : new Date()
   const weekDates = []
   for (let i = 7; i >= 1; i--) {
-    const d = new Date()
+    const d = new Date(base)
     d.setDate(d.getDate() - i)
     weekDates.push(d.toISOString().slice(0, 10).replace(/-/g, ''))
   }
@@ -265,7 +268,9 @@ async function main() {
   const weeklyOnly     = process.argv.includes('--weekly')
 
   if (weeklyOnly) {
-    await runWeeklyReport()
+    const dateIdx = process.argv.indexOf('--date')
+    const weeklyBase = dateIdx !== -1 ? process.argv[dateIdx + 1] : null
+    await runWeeklyReport(weeklyBase)
     return
   }
 

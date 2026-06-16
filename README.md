@@ -60,6 +60,20 @@ pnpm query -- --date 20260520 "SSR P95 是多少？"
 pnpm daily -- --date 20260520 --date 20260521
 ```
 
+### 假日補跑
+
+遇假日無法執行時，下個工作日補跑步驟如下：
+
+```bash
+# 1. 補跑假日前最後一個工作日的資料（例如週四）
+pnpm daily -- --date 20260619
+
+# 2. 補產週報，以週五日期為錨點（往前推 7 天）
+pnpm weekly -- --date 20260620
+```
+
+`pnpm weekly -- --date YYYYMMDD` 會以指定日期為錨點往前推 7 天計算週報涵蓋範圍，不帶 `--date` 則以執行當下為準。
+
 ### Claude Code Skill（需安裝 Claude Code）
 
 在 Claude Code 中可直接使用 `/seo-query` 指令查詢，不另外消耗 API 額度：
@@ -164,7 +178,8 @@ analysis-log/
 ### 週報說明
 
 - **執行時機**：每週五 `pnpm daily` 時自動觸發，或手動執行 `pnpm weekly`
-- **涵蓋範圍**：上週五到本週四（7 天）
+- **涵蓋範圍**：以執行當下（或 `--date` 指定日期）為錨點，往前推 7 天
+- **補跑方式**：遇假日可下個工作日執行 `pnpm weekly -- --date <原定週五日期>` 補產
 - **發送對象**：Google Chat 發精簡摘要 + 詳細週報 Drive 連結
 - **Drive 存放**：`config.js` → `driveFolderIds.weeklyReports`，自動設為 eslite.com 網域內可檢視
 - **對齊 PD 節奏**：PD 每週四更新 GSC 等 SEO 數據，週五週報可呈現最新完整狀態
