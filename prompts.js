@@ -46,7 +46,11 @@ Cache Hit Rate（cache_hits / 總請求數）：
 
 【放量監控】
 當前階段：${config.rules.rollout.current_stage}，GUID 尾兩位 ${config.rules.rollout.guid_digits}
-回滾觸發條件：${config.rules.rollout.rollback_trigger}`
+回滾觸發條件：${config.rules.rollout.rollback_trigger}
+
+【已知架構變更】
+解讀數據時，若觀察到 render time 或其他指標在以下日期前後有明顯變化，應優先歸因於該變更，而非異常：
+${config.rules.knownChanges.map(c => `- ${c.date}：${c.description}`).join('\n')}`
 }
 
 // ── 每日分析報告 prompt（daily-update.js 用）──

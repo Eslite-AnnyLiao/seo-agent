@@ -82,5 +82,11 @@ export const config = {
       min_requests: 25000,   // 當日 Worker 請求數
       min_peak_rpm: 100,     // 當日尖峰 RPM
     },
+    knownChanges: [
+      {
+        date: '2026/06/16',
+        description: '移除 SSR 中的 purchase_status API，改用 prices v2 API；預期此日後 render time（P95/P99）明顯改善',
+      },
+    ],
   },
 };
