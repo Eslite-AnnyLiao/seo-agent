@@ -37,16 +37,16 @@ export const config = {
   // ── Google Sheets（每月手動更新這裡）────────
   sheets: {
     ssr: {
-      spreadsheetId: '1uf1gkqU0Pqh4slxiDKVdjVdtzZHBSSS9IkzaLUUuChk', // 商品頁 SSR 數據統計
+      spreadsheetId: '1fSoJGQk34cGHJYLJ_nUcqLFqjaV8IQ623NjpKAEXkjM', // 商品頁 SSR 數據統計
       sheetName: '每日資料',
       gasWebhookUrl:
-        'https://script.google.com/a/macros/eslite.com/s/AKfycbwwbwbz4stI1JyEMVk1VP8j4XuebUDoDHapnrcsoB_GI-CfuTQ56193tyFH97aBhray/exec',
+        'https://script.google.com/a/macros/eslite.com/s/AKfycbyxDULab7gedlJEQmGoudtZDzki0GiW3UpeSmXTe_7C3t54KKYLSkhtes8Bf8tQG3l8/exec',
     },
     combined: {
-      spreadsheetId: '1y-XIf94_CmevHN28vrRI2zHAyAnjBDIJAS0VLJHahOU', // 全站流量總覽
+      spreadsheetId: '1CbjrsroFnvpXwqBwZSxETOn87Oi156Dref6sBJEHOZA', // 全站流量總覽
       sheetName: '每日資料',
       gasWebhookUrl:
-        'https://script.google.com/a/macros/eslite.com/s/AKfycbx3zOE5XWn1HFzMzfKUrui6T3V945aXHKQAiNzVAFAQWY_iEKAfnhvzzFxy6wIiyIzh/exec',
+        'https://script.google.com/a/macros/eslite.com/s/AKfycbyngz_qh0vZfLRDRdXVQKPh1JCjJ5cmwshXlxoiByGiP-HLFzwI2DLBC9aC_XXjx-jp/exec',
     },
   },
 
