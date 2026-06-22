@@ -72,15 +72,15 @@ export const config = {
       abnormal_pct: 15,           // 404 率高於此值 → 🚨 異常
     },
     rollout: {
-      current_stage: 'P1',
-      guid_digits: '12–19',
-      traffic_percent: 8,
+      current_stage: 'P2',
+      guid_digits: '10–21',
+      traffic_percent: 12,
       rollback_trigger: '5xx rate > 0.5% 或 SSR P95 > 前階段觀測值 × 1.2',
-      start_date: '2026/06/02',
+      start_date: '2026/06/22',
     },
     qualifying_day: {
-      min_requests: 25000,   // 當日 Worker 請求數
-      min_peak_rpm: 100,     // 當日尖峰 RPM
+      min_requests: 50000,   // 當日 Worker 請求數
+      min_peak_rpm: 180,     // 當日尖峰 RPM
     },
     knownChanges: [
       {
