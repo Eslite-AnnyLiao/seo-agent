@@ -50,7 +50,11 @@ Cache Hit Rate（cache_hits / 總請求數）：
 
 【已知架構變更】
 解讀數據時，若觀察到 render time 或其他指標在以下日期前後有明顯變化，應優先歸因於該變更，而非異常：
-${config.rules.knownChanges.map(c => `- ${c.date}：${c.description}`).join('\n')}`
+${config.rules.knownChanges.map(c => `- ${c.date}：${c.description}`).join('\n')}
+
+【特殊事件】
+special_events/ 資料夾存放人工記錄的臨時事件報告（如搶購活動、促銷導致的爬蟲錯誤暴增等），與【已知架構變更】不同，這類事件無固定週期。
+若數據區塊中附有「已知特殊事件」內容，分析時應優先以該事件說明當天的異常波動，不需重複給出事件報告中已分析過的建議，可簡短引用其結論即可；若無附帶此區塊，則正常依異常判斷規則處理。`
 }
 
 // ── 每日分析報告 prompt（daily-update.js 用）──
@@ -148,6 +152,7 @@ ${sharedBackground()}
 【可用工具】
 - read_json：讀取每日 SSR／combined 效能 JSON（cache hit rate、P95/P99 render time 等）
 - read_gsc_sheet：讀取 GSC Tracking Google Sheet（曝光、點擊、Coverage、5XX 錯誤、CWV 等），資料為週粒度
+- read_special_events：讀取人工記錄的特殊事件報告（如搶購活動造成的爬蟲錯誤暴增）。當數據出現異常波動時，應先呼叫此工具確認當天是否有已知特殊事件，再判斷是否為真實異常
 
 【GSC 資料使用說明】
 - GSC 資料為週粒度，日期欄代表該週結束日（週四），每週四左右更新

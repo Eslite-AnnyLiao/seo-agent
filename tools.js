@@ -5,9 +5,12 @@
 
 import { execSync } from 'child_process';
 import { readdirSync, readFileSync, createReadStream } from 'fs';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { google } from 'googleapis';
 import { config } from './config.js';
+
+const REPO_ROOT = dirname(fileURLToPath(import.meta.url));
 
 // ── 工具定義（傳給 Claude API）─────────────────
 export const toolDefinitions = [
@@ -107,7 +110,41 @@ export const toolDefinitions = [
       required: [],
     },
   },
+  {
+    name: 'read_special_events',
+    description: [
+      '讀取 special_events/ 資料夾中人工記錄的特殊事件報告（如搶購活動、促銷導致的爬蟲錯誤暴增、系統異動等臨時事件）。',
+      '檔名包含日期（YYYY-MM-DD）。當某天數據出現異常波動時，應先呼叫此工具確認當天是否有已知特殊事件，再判斷是否為真實異常。',
+      '不指定 date 則回傳全部已記錄的事件。',
+    ].join(' '),
+    input_schema: {
+      type: 'object',
+      properties: {
+        date: {
+          type: 'string',
+          description: '指定日期 YYYYMMDD，不填則回傳全部已記錄的特殊事件',
+        },
+      },
+      required: [],
+    },
+  },
 ];
+
+// ── 特殊事件報告 ───────────────────────────────
+export function loadSpecialEvents(date) {
+  const dir = resolve(REPO_ROOT, config.specialEventsPath);
+  let files;
+  try {
+    files = readdirSync(dir).filter((f) => f.endsWith('.md'));
+  } catch {
+    return [];
+  }
+
+  const target = date ? `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}` : null;
+  const matched = target ? files.filter((f) => f.includes(target)) : files;
+
+  return matched.map((f) => ({ file: f, content: readFileSync(resolve(dir, f), 'utf-8') }));
+}
 
 // ── 認證工具 ───────────────────────────────────
 function isAuthError(err) {
@@ -311,6 +348,10 @@ async function runTool(name, input) {
       }
 
       return JSON.stringify({ dates: slicedDates, metrics });
+    }
+
+    case 'read_special_events': {
+      return JSON.stringify({ events: loadSpecialEvents(input.date) });
     }
 
     default:

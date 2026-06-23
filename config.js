@@ -14,6 +14,9 @@ export const config = {
     combined: 'daily-analysis-result/astro/datadog-export/combined',
   },
 
+  // ── 特殊事件報告（搶購活動等臨時事件，人工放置於此資料夾）────
+  specialEventsPath: 'special_events',
+
   // ── Google Drive 上傳目的地 ────────────────
   driveFolderIds: {
     ssr: '1tFUlJhjyEEWBtfbAGKZqOCLLCOO3xXE_',

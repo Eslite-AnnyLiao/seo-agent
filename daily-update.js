@@ -5,7 +5,7 @@
 
 import { writeFileSync, mkdirSync, readdirSync, readFileSync } from 'fs'
 import { resolve } from 'path'
-import { executeTool, getDatesToProcess, uploadReportToDrive, extractBotName } from './tools.js'
+import { executeTool, getDatesToProcess, uploadReportToDrive, extractBotName, loadSpecialEvents } from './tools.js'
 import { config } from './config.js'
 import { buildDailyAnalysisPrompt, buildWeeklyAnalysisPrompt } from './prompts.js'
 
@@ -63,6 +63,12 @@ function saveReport(dir, filename, content) {
 
 function parseToolResult(jsonStr) {
   try { return JSON.parse(jsonStr) } catch { return null }
+}
+
+function specialEventsBlock(date) {
+  const events = loadSpecialEvents(date)
+  if (events.length === 0) return ''
+  return `\n已知特殊事件：\n${events.map(e => e.content).join('\n\n')}`
 }
 
 async function runDailyUpdate(skipFetch = false, skipToAnalysis = false) {
@@ -127,7 +133,7 @@ async function runDailyUpdate(skipFetch = false, skipToAnalysis = false) {
 SSR 今日：${JSON.stringify(curSsr)}
 SSR 前日：${JSON.stringify(prvSsr)}
 Combined 今日：${JSON.stringify(curCombined)}
-Combined 前日：${JSON.stringify(prvCombined)}`)
+Combined 前日：${JSON.stringify(prvCombined)}${specialEventsBlock(date)}`)
   }
 
   const res = await fetch(`${process.env.ANTHROPIC_BASE_URL}/v1/messages`, {
@@ -202,7 +208,7 @@ async function runWeeklyReport(baseDate = null) {
 
       sections.push(`【${date}】觀測達標日：${isQualifying ? '✅ 是' : '❌ 否'}
 SSR：${JSON.stringify(curSsr)}
-Combined：${JSON.stringify(curCombined)}`)
+Combined：${JSON.stringify(curCombined)}${specialEventsBlock(date)}`)
     } catch {
       sections.push(`【${date}】無資料`)
     }

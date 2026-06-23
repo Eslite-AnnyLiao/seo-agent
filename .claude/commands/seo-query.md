@@ -46,6 +46,11 @@ render_time_stats 只涵蓋 cache miss 的請求。
 
 檔名格式：`ssr-product-log-YYYYMMDD_analysis.json` / `combined-YYYYMMDD_analysis.json`
 
+## 特殊事件報告
+
+`special_events/` 資料夾存放人工記錄的臨時事件報告（如搶購活動、促銷導致的爬蟲錯誤暴增等），檔名包含日期（格式 `seo-impact-report-YYYY-MM-DD.md`）。
+若查詢日期數據出現異常波動（render time 飆高、錯誤率上升、流量驟降等），**先用 Read 工具檢查 `special_events/` 內是否有對應日期的報告**，若有則優先以該事件說明異常，並可直接引用報告中的結論，不需重新推斷原因；若無對應報告才依下方異常判斷規則處理。
+
 ---
 
 ## GSC Tracking Sheet 欄位說明
@@ -189,6 +194,7 @@ GSC Tracking Sheet 已在 Step 2 直接取得，無需額外下載。
 - render_time_stats 只涵蓋 cache miss（進入 Worker）的請求，非全部流量
 - cache hit rate 偏低的根本原因是 URL 多樣性高（每天約 2 萬個不重複商品頁），理論上限約 21%，調整 TTL 無法改善；低於 {rules.cacheHitRateWarnPct}% 才代表 cache 失效異常
 - {rollout.startDate} 為本階段（{rollout.phase}）切換日，當天流量為前後兩個階段混合，數據不具代表性，**不計入觀測達標日**
+- 查詢日期數據異常時，務必先檢查 `special_events/` 是否有對應日期報告，避免將已知事件誤判為新異常
 
 ---
 
