@@ -1,10 +1,16 @@
 # SEO Agent
 
-Eslite 誠品線上 Astro 商品頁 SEO 每日自動化維運工具。
+Eslite 誠品線上 Astro 商品頁／分類頁 SEO 每日自動化維運工具。下載與分析程式由獨立專案
+`astro-log-pipeline` 負責（`.env` 的 `ANALYSIS_LOG_PATH`/`PIPELINE_SCRIPT` 指向該專案），
+seo-agent 透過 `config.js` 的 `pageKinds` registry 讀取其產出的 JSON。
+
+目前登記的頁面類型：**商品頁（`product`）**、**分類頁（`category`）**。要加新頁面類型（例如文章頁）
+只需要在 `config.js` 的 `pageKinds` 新增一筆設定，`tools.js`/`daily-update.js` 的邏輯本體不用改
+（詳見「頁面類型 registry」章節）。
 
 ## 功能
 
-- 執行 daily pipeline 下載 SSR / Combined 數據
+- 執行 daily pipeline 下載各頁面類型（商品頁／分類頁）與 Combined 數據
 - 上傳 JSON 至 Google Drive
 - 觸發 Google Sheets GAS 更新
 - 產出每日分析報告（Markdown 檔案）
@@ -114,14 +120,14 @@ pnpm install
 ANTHROPIC_AUTH_TOKEN=sk-...
 ANTHROPIC_BASE_URL=https://litellm.in.eslite.com
 GOOGLE_CHAT_WEBHOOK_URL=https://chat.googleapis.com/...
-ANALYSIS_LOG_PATH=/your/path/to/analysis-log
-PIPELINE_SCRIPT=/your/path/to/analysis-log/daily-pipeline.js
+ANALYSIS_LOG_PATH=/your/path/to/astro-log-pipeline
+PIPELINE_SCRIPT=/your/path/to/astro-log-pipeline/bin/daily-pipeline.js
 ```
 
 > `ANTHROPIC_AUTH_TOKEN`：使用公司 LiteLLM proxy 的個人 API key，請向專案負責人取得。
 > `ANTHROPIC_BASE_URL`：公司 LiteLLM proxy 位址，固定為 `https://litellm.in.eslite.com`。
 > `GOOGLE_CHAT_WEBHOOK_URL`：請向專案負責人取得。
-> `ANALYSIS_LOG_PATH` / `PIPELINE_SCRIPT`：依賴另一個 pipeline 專案，請向專案負責人取得執行檔與目錄路徑後填入。
+> `ANALYSIS_LOG_PATH` / `PIPELINE_SCRIPT`：指向 `astro-log-pipeline` 專案的目錄與 `bin/daily-pipeline.js`。
 
 ### 3. Google 認證
 
@@ -131,35 +137,45 @@ gcloud auth login --enable-gdrive-access
 
 ### 4. 設定 `config.js`
 
-填入以下資訊：
+每個頁面類型（`pageKinds.product`、`pageKinds.category`...）與 `combined` 各自的 Drive 資料夾／Sheet 都填在對應區塊：
 
 ```js
-// Google Drive 上傳目的地
-driveFolderIds: {
-  ssr:           'SSR 資料夾 ID',
-  combined:      'Combined 資料夾 ID',
-  weeklyReports: '週報資料夾 ID',
+pageKinds: {
+  product: {
+    driveFolderId:    '商品頁 Drive 資料夾 ID',
+    seoAgentFolderId: '商品頁 seo-agent 固定資料夾 ID',
+    sheet: { spreadsheetId: 'Sheet ID', gasWebhookUrl: 'GAS Webhook URL' },
+    // ...
+  },
+  category: {
+    driveFolderId:    '分類頁 Drive 資料夾 ID',
+    seoAgentFolderId: '分類頁 seo-agent 固定資料夾 ID',
+    sheet: { spreadsheetId: 'Sheet ID', gasWebhookUrl: 'GAS Webhook URL' },
+    // ...
+  },
 },
 
-// Google Sheets
-sheets: {
-  ssr: {
-    spreadsheetId: 'Sheet ID',
-    gasWebhookUrl: 'GAS Webhook URL',
-  },
-  combined: {
-    spreadsheetId: 'Sheet ID',
-    gasWebhookUrl: 'GAS Webhook URL',
-  },
+combined: {
+  driveFolderId:    'Combined Drive 資料夾 ID',
+  seoAgentFolderId: 'Combined seo-agent 固定資料夾 ID',
+  sheet: { spreadsheetId: 'Sheet ID', gasWebhookUrl: 'GAS Webhook URL' },
+},
+
+driveFolderIds: {
+  weeklyReports: '週報資料夾 ID',
+  dailyReports:  '日報資料夾 ID',
 },
 
 // Google Chat Webhook URL 設定於 .env → GOOGLE_CHAT_WEBHOOK_URL
 ```
 
+> `category` 的 Drive 資料夾、Sheet 與 GAS webhook 已建立並填入 `config.js`。若之後又新增頁面類型，
+> 補齊前 `daily-update.js` 對該 kind 的 Drive 上傳/GAS 觸發步驟會印出警告後略過，不影響其他 kind 正常運作。
+
 ### 5. 部署 GAS
 
 1. 打開 Google Sheets → Apps Script
-2. 貼上 `gas-webhook.gs` 內容（SSR 和 Combined 各自部署）
+2. 貼上 `gas-webhook.gs` 內容（每個頁面類型／Combined 各自的 Sheet 都要各自部署一份）
 3. 部署為「網路應用程式」→ 複製 Webhook URL 填入 `config.js`
 
 ---
@@ -188,19 +204,14 @@ analysis-log/
 
 ## 每月更新 Sheet
 
-每月建立新的 Google Sheet 時，只需更新 `config.js` 的 `sheets` 區塊：
+每月建立新的 Google Sheet 時，只需更新 `config.js` 每個頁面類型／`combined` 底下的 `sheet` 區塊：
 
 ```js
-sheets: {
-  ssr: {
-    spreadsheetId: '新的 Sheet ID',   // 更新
-    gasWebhookUrl: '新的 Webhook URL', // 更新
-  },
-  combined: {
-    spreadsheetId: '新的 Sheet ID',   // 更新
-    gasWebhookUrl: '新的 Webhook URL', // 更新
-  },
+pageKinds: {
+  product:  { sheet: { spreadsheetId: '新的 Sheet ID', gasWebhookUrl: '新的 Webhook URL' } },
+  category: { sheet: { spreadsheetId: '新的 Sheet ID', gasWebhookUrl: '新的 Webhook URL' } },
 },
+combined: { sheet: { spreadsheetId: '新的 Sheet ID', gasWebhookUrl: '新的 Webhook URL' } },
 ```
 
 同時需在新 Sheet 重新部署 GAS 腳本。
@@ -208,6 +219,8 @@ sheets: {
 ---
 
 ## 異常告警規則
+
+適用於所有登記頁面類型（商品頁、分類頁）的 SSR 資料，目前共用同一套門檻：
 
 | 指標 | 門檻 | 等級 |
 |------|------|------|
@@ -233,9 +246,20 @@ sheets: {
 - SSR 服務只有爬蟲（Googlebot）進入，不影響使用者體驗，但影響 SEO 品質
 - 渲染架構使用 Cloudflare Worker，效能問題方向是優化 API 或 cache 策略
 - P95/P99 數值只涵蓋 cache miss 的實際渲染請求
-- 商品價格與庫存為 client-side 非同步載入，不在 SSR 範疇
+- 商品頁價格與庫存為 client-side 非同步載入，不在 SSR 範疇；分類頁沒有 SSG，只有 SSR
 
 ---
+
+## 頁面類型 registry
+
+`config.js` 的 `pageKinds`（目前為 `product`、`category`）驅動 `tools.js`/`daily-update.js` 的邏輯本體：
+每個 kind 定義 JSON 路徑、Drive 資料夾、Sheet/GAS 設定，以及對應 combined json 的欄位名
+（`combinedRecordsKey`/`combinedCacheHitKey`/`combinedErrorsKey`/`combinedAffectedCountKey`）。
+`combined` 是跨頁面類型的彙總，獨立於 `pageKinds` 之外。
+
+要加新頁面類型（例如文章頁）：在 `pageKinds` 複製一筆改路徑/欄位名即可，`tools.js` 的 `read_json`、
+`upload_to_drive`、`trigger_gas` 與 `daily-update.js` 的迴圈都會自動涵蓋新 kind，不需要改邏輯本體。
+`prompts.js` 裡頁面特有的業務知識敘述、`.claude/commands/seo-query.md` 的操作步驟仍需手動補一小段。
 
 ## Prompt 維護
 
@@ -243,5 +267,5 @@ sheets: {
 
 需要更新的時機：
 - 放量階段升級（P0 → P1...）→ 更新 `config.js` 的 `rules.rollout`
-- 異常閾值調整 → 更新 `config.js` 的 `rules.ssr`
+- 異常閾值調整 → 更新 `config.js` 的 `rules.renderTime`
 - 背景知識有變更（架構調整、新的注意事項）→ 直接修改 `prompts.js`

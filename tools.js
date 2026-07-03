@@ -12,6 +12,37 @@ import { config } from './config.js';
 
 const REPO_ROOT = dirname(fileURLToPath(import.meta.url));
 
+// ── 頁面類型 registry 查表 ─────────────────────
+// PAGE_KIND_KEYS = ['product', 'category', ...]（跟著 config.pageKinds 走，
+// 新增頁面類型不用改這裡）。TYPE_ENUM 是所有工具 `type` 參數的合法值。
+const PAGE_KIND_KEYS = Object.keys(config.pageKinds);
+const TYPE_ENUM = [...PAGE_KIND_KEYS, 'combined'];
+
+function resolveType(type) {
+  return type === 'combined' ? config.combined : config.pageKinds[type];
+}
+
+const pageKindLabels = PAGE_KIND_KEYS.map((k) => config.pageKinds[k].label).join('/');
+
+// 任一頁面類型（product、category...）的 SSR 效能 json 欄位形狀相同，共用同一套解析邏輯
+function buildRenderStatsResult(raw, target) {
+  const total  = raw.data_source_stats?.valid_duration_records ?? raw.data_source_stats?.total_records ?? 0;
+  const slow   = raw.render_time_stats?.count_above_3000to5000ms ?? 0;
+  const abnorm = raw.render_time_stats?.count_above_5000ms       ?? 0;
+  return {
+    date:                     target.match(/\d{8}/)?.[0],
+    total_records:            total,
+    average_ms:               raw.render_time_stats?.average_ms    ?? null,
+    median_p50_ms:            raw.render_time_stats?.median_p50_ms ?? null,
+    p95_ms:                   raw.render_time_stats?.p95_ms        ?? null,
+    p99_ms:                   raw.render_time_stats?.p99_ms        ?? null,
+    max_ms:                   raw.render_time_stats?.max_ms        ?? null,
+    slow_render_rate_pct:     total > 0 ? parseFloat((slow   / total * 100).toFixed(2)) : null,
+    abnormal_render_rate_pct: total > 0 ? parseFloat((abnorm / total * 100).toFixed(2)) : null,
+    max_request_per_minute:   raw.per_minute_stats?.max_value      ?? null,
+  };
+}
+
 // ── 工具定義（傳給 Claude API）─────────────────
 export const toolDefinitions = [
   {
@@ -19,7 +50,7 @@ export const toolDefinitions = [
     description: [
       '執行 daily-pipeline.js，每個日期各跑一次。',
       '指令格式：node daily-pipeline.js --date YYYYMMDD',
-      '每次執行會同時產生 ssr 和 combined 兩組 json。',
+      `每次執行會同時產生 ${pageKindLabels} 與 combined 共 ${TYPE_ENUM.length} 組 json。`,
     ].join(' '),
     input_schema: {
       type: 'object',
@@ -35,13 +66,13 @@ export const toolDefinitions = [
   },
   {
     name: 'upload_to_drive',
-    description: '把 ssr 或 combined 目錄下指定日期的 json 上傳到對應的 Google Drive 資料夾',
+    description: `把指定頁面類型（${TYPE_ENUM.join('/')}）目錄下指定日期的 json 上傳到對應的 Google Drive 資料夾`,
     input_schema: {
       type: 'object',
       properties: {
         type: {
           type: 'string',
-          enum: ['ssr', 'combined'],
+          enum: TYPE_ENUM,
           description: '要上傳哪組資料',
         },
         dates: {
@@ -61,7 +92,7 @@ export const toolDefinitions = [
       properties: {
         type: {
           type: 'string',
-          enum: ['ssr', 'combined'],
+          enum: TYPE_ENUM,
           description: '要觸發哪個 sheet 的 GAS',
         },
         dates: {
@@ -75,13 +106,13 @@ export const toolDefinitions = [
   },
   {
     name: 'read_json',
-    description: '讀取 ssr 或 combined 的 json 資料，用來回答 SEO 查詢問題',
+    description: `讀取指定頁面類型（${pageKindLabels}）SSR 效能或 combined 的 json 資料，用來回答 SEO 查詢問題`,
     input_schema: {
       type: 'object',
       properties: {
         type: {
           type: 'string',
-          enum: ['ssr', 'combined'],
+          enum: TYPE_ENUM,
           description: '要讀哪組資料',
         },
         date: {
@@ -175,7 +206,7 @@ async function runTool(name, input) {
   switch (name) {
     case 'run_fetch': {
       const dates = input.dates?.length ? input.dates : [getYesterday()];
-      const generated = { ssr: [], combined: [] };
+      const generated = {};
 
       for (const date of dates) {
         const cmd = `node ${config.pipelineScript} --date ${date}`;
@@ -183,9 +214,9 @@ async function runTool(name, input) {
         execSync(cmd, { stdio: 'inherit' });
       }
 
-      // 確認兩個目錄的產出
-      for (const type of ['ssr', 'combined']) {
-        const dir = resolve(config.analysisLogPath, config.jsonPaths[type]);
+      // 確認每個頁面類型 + combined 目錄的產出
+      for (const type of TYPE_ENUM) {
+        const dir = resolve(config.analysisLogPath, resolveType(type).jsonPath);
         generated[type] = readdirSync(dir)
           .filter((f) => f.endsWith('.json'))
           .map((f) => resolve(dir, f));
@@ -196,12 +227,13 @@ async function runTool(name, input) {
 
     case 'upload_to_drive': {
       const { type, dates } = input;
+      const { jsonPath, driveFolderId, seoAgentFolderId } = resolveType(type);
       const accessToken = execSync('gcloud auth print-access-token').toString().trim();
       const authClient = new google.auth.OAuth2();
       authClient.setCredentials({ access_token: accessToken });
       const drive = google.drive({ version: 'v3', auth: authClient });
 
-      const dir = resolve(config.analysisLogPath, config.jsonPaths[type]);
+      const dir = resolve(config.analysisLogPath, jsonPath);
       const files = readdirSync(dir)
         .filter((f) => f.endsWith('.json') && dates.some((d) => f.includes(d)));
 
@@ -211,7 +243,7 @@ async function runTool(name, input) {
         const res = await drive.files.create({
           requestBody: {
             name: fileName,
-            parents: [config.driveFolderIds[type]],
+            parents: [driveFolderId],
           },
           media: {
             mimeType: 'application/json',
@@ -224,7 +256,7 @@ async function runTool(name, input) {
         await drive.files.create({
           requestBody: {
             name: fileName,
-            parents: [config.seoAgentFolderIds[type]],
+            parents: [seoAgentFolderId],
           },
           media: {
             mimeType: 'application/json',
@@ -239,7 +271,7 @@ async function runTool(name, input) {
 
     case 'trigger_gas': {
       const { type, dates } = input;
-      const { gasWebhookUrl, sheetName, spreadsheetId } = config.sheets[type];
+      const { gasWebhookUrl, sheetName, spreadsheetId } = resolveType(type).sheet;
 
       const accessToken = execSync('gcloud auth print-access-token').toString().trim();
 
@@ -259,7 +291,7 @@ async function runTool(name, input) {
 
     case 'read_json': {
       const { type, date } = input;
-      const dir = resolve(config.analysisLogPath, config.jsonPaths[type]);
+      const dir = resolve(config.analysisLogPath, resolveType(type).jsonPath);
       const allFiles = readdirSync(dir).filter((f) => f.endsWith('.json'));
       const target = date
         ? allFiles.find((f) => f.includes(date))
@@ -269,42 +301,36 @@ async function runTool(name, input) {
 
       const raw = JSON.parse(readFileSync(resolve(dir, target), 'utf-8'));
 
-      if (type === 'ssr') {
-        const total  = raw.data_source_stats?.valid_duration_records ?? raw.data_source_stats?.total_records ?? 0
-        const slow   = raw.render_time_stats?.count_above_3000to5000ms ?? 0
-        const abnorm = raw.render_time_stats?.count_above_5000ms       ?? 0
-        return JSON.stringify({
-          date:                     target.match(/\d{8}/)?.[0],
-          total_records:            total,
-          average_ms:               raw.render_time_stats?.average_ms    ?? null,
-          median_p50_ms:            raw.render_time_stats?.median_p50_ms ?? null,
-          p95_ms:                   raw.render_time_stats?.p95_ms        ?? null,
-          p99_ms:                   raw.render_time_stats?.p99_ms        ?? null,
-          max_ms:                   raw.render_time_stats?.max_ms        ?? null,
-          slow_render_rate_pct:     total > 0 ? parseFloat((slow   / total * 100).toFixed(2)) : null,
-          abnormal_render_rate_pct: total > 0 ? parseFloat((abnorm / total * 100).toFixed(2)) : null,
-          max_request_per_minute:   raw.per_minute_stats?.max_value      ?? null,
-        })
+      if (PAGE_KIND_KEYS.includes(type)) {
+        return JSON.stringify(buildRenderStatsResult(raw, target));
       }
 
       if (type === 'combined') {
-        const ssrRecords   = raw.data_source_stats?.ssr_records       ?? 0
-        const cacheHitSsr  = raw.cloudflare_cache_hit?.total_ssr_hits ?? 0
-        const totalSsr     = ssrRecords + cacheHitSsr
-        const totalRecords = raw.data_source_stats?.total_records ?? null
-        const total404     = raw.errors_404?.total_404_count ?? null
-        return JSON.stringify({
+        const totalRecords = raw.data_source_stats?.total_records ?? null;
+        const result = {
           date:                    target.match(/\d{8}/)?.[0],
           total_records:           totalRecords,
-          ssg_records:             raw.data_source_stats?.ssg_records   ?? null,
-          ssr_records:             ssrRecords,
-          max_request_per_minute:  raw.per_minute_stats?.max_value      ?? null,
-          cache_hit_ssr:           cacheHitSsr,
-          cache_hit_rate_pct:      totalSsr > 0 ? parseFloat((cacheHitSsr / totalSsr * 100).toFixed(2)) : null,
-          total_404_count:         total404,
-          affected_product_count:  raw.errors_404?.affected_product_count ?? null,
-          error_404_rate_pct:      (totalRecords > 0 && total404 !== null) ? parseFloat((total404 / totalRecords * 100).toFixed(2)) : null,
-        })
+          ssg_records:             raw.data_source_stats?.ssg_records ?? null,
+          max_request_per_minute:  raw.per_minute_stats?.max_value    ?? null,
+        };
+
+        // 對每個登記的頁面類型動態算出 cache hit / 404 相關欄位，
+        // 新增頁面類型時這裡自動多輸出一組欄位，不用改程式碼。
+        for (const [kind, k] of Object.entries(config.pageKinds)) {
+          const records   = raw.data_source_stats?.[k.combinedRecordsKey] ?? 0;
+          const cacheHit  = raw[k.combinedCacheHitKey]?.total_ssr_hits    ?? 0;
+          const totalMiss = records + cacheHit;
+          const total404  = raw[k.combinedErrorsKey]?.total_404_count    ?? null;
+
+          result[`${kind}_records`]            = records;
+          result[`cache_hit_${kind}`]           = cacheHit;
+          result[`cache_hit_rate_${kind}_pct`]  = totalMiss > 0 ? parseFloat((cacheHit / totalMiss * 100).toFixed(2)) : null;
+          result[`total_404_count_${kind}`]     = total404;
+          result[`affected_${kind}_count`]      = raw[k.combinedErrorsKey]?.[k.combinedAffectedCountKey] ?? null;
+          result[`error_404_rate_${kind}_pct`]  = (totalRecords > 0 && total404 !== null) ? parseFloat((total404 / totalRecords * 100).toFixed(2)) : null;
+        }
+
+        return JSON.stringify(result);
       }
 
       return JSON.stringify({ error: `未知 type: ${type}` });

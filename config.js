@@ -2,6 +2,11 @@
 // config.js
 // 每月換新 sheet 時只需更新 sheets 區塊的
 // spreadsheetId 和 gasWebhookUrl
+//
+// 頁面類型 registry：驅動 tools.js / daily-update.js 的邏輯本體。
+// 要加新頁面類型（例如文章頁），照 pageKinds 這個形狀新增一筆設定即可，
+// 不需要改 tools.js / daily-update.js 的邏輯本體（呼應 astro-log-pipeline
+// 的 src/config/page-kinds.js 設計）。
 // ─────────────────────────────────────────────
 
 export const config = {
@@ -9,26 +14,68 @@ export const config = {
   analysisLogPath: process.env.ANALYSIS_LOG_PATH,
   pipelineScript:  process.env.PIPELINE_SCRIPT,
 
-  jsonPaths: {
-    ssr: 'daily-analysis-result/astro/datadog-export/ssr',
-    combined: 'daily-analysis-result/astro/datadog-export/combined',
+  // ── 頁面類型 registry ──────────────────────
+  // combinedRecordsKey / combinedCacheHitKey / combinedErrorsKey 對應的是
+  // astro-log-pipeline 原始 combined json 裡實際存在的欄位名（該專案定義，
+  // 不受這裡的 pageKinds 鍵名影響）。
+  pageKinds: {
+    product: {
+      label: '商品頁',
+      jsonPath: 'daily-analysis-result/datadog-export/product/ssr',
+      driveFolderId: '1n2WMWg-fPS4aiFoGAEjoE3UebGN0oY50',
+      seoAgentFolderId: '1MmLWR2m0MtuQ4v13o82HBvcm0XT5cPuJ',
+      sheet: {
+        spreadsheetId: '1fSoJGQk34cGHJYLJ_nUcqLFqjaV8IQ623NjpKAEXkjM', // 商品頁 SSR 數據統計
+        sheetName: '每日資料',
+        gasWebhookUrl:
+          'https://script.google.com/a/macros/eslite.com/s/AKfycbxBdD5q2BSQ1BUg9jJlNydcWTNf-aMQpYg6pslkOv2euhYksWmtuSKzZkWASznEX38E/exec',
+      },
+      combinedRecordsKey: 'ssr_records',
+      combinedCacheHitKey: 'cloudflare_cache_hit',
+      combinedErrorsKey: 'errors_404',
+      combinedAffectedCountKey: 'affected_product_count',
+    },
+
+    category: {
+      label: '分類頁',
+      jsonPath: 'daily-analysis-result/datadog-export/category/ssr',
+      driveFolderId: '1sGmnES8iDttMIvo8onPSl2dLnr1RznBf',
+      seoAgentFolderId: '145MJEd9TnIO22GAEnQtbfKGCRvRHwcmv',
+      sheet: {
+        spreadsheetId: '13onChUJX9e-M6rtlWDghstMk_sQtgkrpUsgUaya4VLU', // 分類頁 SSR 數據統計
+        sheetName: '每日資料',
+        gasWebhookUrl:
+          'https://script.google.com/a/macros/eslite.com/s/AKfycbxYhqlyifTBAe6ctxJevIYZlxn07Qw2KT9QCRG67hMcCrKvIVN9UT0sA8FtCHmiJUb2/exec',
+      },
+      combinedRecordsKey: 'category_records',
+      combinedCacheHitKey: 'cloudflare_cache_hit_category',
+      combinedErrorsKey: 'errors_404_category',
+      combinedAffectedCountKey: 'affected_category_count',
+    },
+
+    // 未來加文章頁：複製一筆改路徑/欄位名即可，不用碰 tools.js / daily-update.js
+  },
+
+  // combined 是跨頁面類型的彙總，不是某一種頁面，獨立於 pageKinds 之外
+  combined: {
+    jsonPath: 'daily-analysis-result/datadog-export/combined',
+    driveFolderId: '1rF66lEG52iOAUNgm__Dx7GMow6VYwkSY',
+    seoAgentFolderId: '1w089WQQpTFmkRtLN6jwPE7nFpUzhL2Pi',
+    sheet: {
+      spreadsheetId: '1CbjrsroFnvpXwqBwZSxETOn87Oi156Dref6sBJEHOZA', // 全站流量總覽
+      sheetName: '每日資料',
+      gasWebhookUrl:
+        'https://script.google.com/a/macros/eslite.com/s/AKfycbycxFdWQeqmyOvVBn1HmmxLJ4txq21txeV9C__NGco4SkkoO9SIZU0nD49qC-qdi1_5/exec',
+    },
   },
 
   // ── 特殊事件報告（搶購活動等臨時事件，人工放置於此資料夾）────
   specialEventsPath: 'special_events',
 
-  // ── Google Drive 上傳目的地 ────────────────
+  // ── Google Drive 上傳目的地（跟頁面類型無關的固定資料夾）───
   driveFolderIds: {
-    ssr: '1tFUlJhjyEEWBtfbAGKZqOCLLCOO3xXE_',
-    combined: '1rF66lEG52iOAUNgm__Dx7GMow6VYwkSY',
     weeklyReports: '1e29H-bKSd6gPaYsFkx1DB2zMZyU4vkC9',
     dailyReports: '1WOOPHMT3NjLZCS3AH4DpCuwyvNiB4EXa',
-  },
-
-  // ── seo-agent skill 用的固定資料夾（不隨月份換）────
-  seoAgentFolderIds: {
-    ssr: '1iXSr0Oc4lEJnSScPMSplI2z9bUNyGpVR',
-    combined: '1w089WQQpTFmkRtLN6jwPE7nFpUzhL2Pi',
   },
 
   // ── GSC Tracking Sheet（固定，不隨月份換）────
@@ -37,28 +84,12 @@ export const config = {
     sheetName: 'GSC Tracking',
   },
 
-  // ── Google Sheets（每月手動更新這裡）────────
-  sheets: {
-    ssr: {
-      spreadsheetId: '1fSoJGQk34cGHJYLJ_nUcqLFqjaV8IQ623NjpKAEXkjM', // 商品頁 SSR 數據統計
-      sheetName: '每日資料',
-      gasWebhookUrl:
-        'https://script.google.com/a/macros/eslite.com/s/AKfycbyxDULab7gedlJEQmGoudtZDzki0GiW3UpeSmXTe_7C3t54KKYLSkhtes8Bf8tQG3l8/exec',
-    },
-    combined: {
-      spreadsheetId: '1CbjrsroFnvpXwqBwZSxETOn87Oi156Dref6sBJEHOZA', // 全站流量總覽
-      sheetName: '每日資料',
-      gasWebhookUrl:
-        'https://script.google.com/a/macros/eslite.com/s/AKfycbyngz_qh0vZfLRDRdXVQKPh1JCjJ5cmwshXlxoiByGiP-HLFzwI2DLBC9aC_XXjx-jp/exec',
-    },
-  },
-
   // ── Google Chat Webhook ───────────────────
   googleChatWebhookUrl: process.env.GOOGLE_CHAT_WEBHOOK_URL ?? '',
 
   // ── 數據判斷規則 ──────────────────────────
   rules: {
-    ssr: {
+    renderTime: {
       p95_warn_ms: 3000,          // render_time_stats.p95_ms
       p99_warn_ms: 5000,          // render_time_stats.p99_ms
       abnormal_render_rate: 1,    // 異常渲染率（%）count_above_5000ms / total_records
