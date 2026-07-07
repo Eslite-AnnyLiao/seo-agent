@@ -7,34 +7,42 @@
 import { config } from './config.js'
 
 // ── 共用背景知識 ───────────────────────────────
+const pageKindKeys = Object.keys(config.pageKinds)
+const pageKindLabels = Object.values(config.pageKinds).map(k => k.label).join('、')
+
 function sharedBackground() {
   return `【重要背景】
 SSR 服務只有爬蟲（如 Googlebot）會進入，不會有真實使用者體驗。
 因此 SSR 效能問題不影響使用者體驗，但會直接影響 SEO 品質（索引速度、爬取預算、排名）。
 渲染架構使用 Cloudflare Worker，沒有 Pod 或傳統伺服器，不適用擴容（scale up/out）建議。效能問題方向是優化 API 或 cache 策略。
-目前處於 ${config.rules.rollout.current_stage} 導流階段（GUID 尾兩位 ${config.rules.rollout.guid_digits}，約 ${config.rules.rollout.traffic_percent}% 流量），cache hit rate 偏低的根本原因是 URL 多樣性高（每天約 2 萬個不重複商品頁），理論上限約 21%，調整 TTL 無法改善，不作為優化目標。
+目前處於 ${config.rules.rollout.current_stage} 導流階段（GUID 尾兩位 ${config.rules.rollout.guid_digits}，約 ${config.rules.rollout.traffic_percent}% 流量）。
 Astro SSR 目前只處理約 ${config.rules.rollout.traffic_percent}% 的 Googlebot 流量，其餘 ${100 - config.rules.rollout.traffic_percent}% 走舊架構，因此 SSR 效能問題對整體 GSC 指標（曝光、點擊、CWV 等）的影響有限，分析時不應將 GSC 指標的明顯波動直接歸因於 Astro。
-SSG 筆數少是正常的，SSG 只針對熱門商品（每日排行榜），不需建議擴大範圍。
-ssr_records = 實際打到 Worker 的請求數（cache miss）；cache_hit_ssr = Cloudflare edge 直接回應（未進 Worker）。
-cache_hit_rate_pct = cache_hit_ssr / (cache_hit_ssr + ssr_records)，已預先計算，直接使用。
 render_time_stats（P95/P99 等）只涵蓋 cache miss 的請求，即實際執行 SSR 渲染的那些，不含 cache hit。
+
+【目前登記的頁面類型：${pageKindLabels}】
+以下渲染時間/cache/404 判斷規則適用於所有登記頁面類型的 SSR 資料，目前共用同一套門檻（尚未依頁面類型分別校準獨立 baseline，待累積足夠歷史數據後再校準）。
+
+【商品頁（product）專屬知識】
+cache hit rate 偏低的根本原因是 URL 多樣性高（每天約 2 萬個不重複商品頁），理論上限約 21%，調整 TTL 無法改善，不作為優化目標。
+SSG 筆數少是正常的，SSG 只針對熱門商品（每日排行榜），不需建議擴大範圍；分類頁沒有 SSG，只有 SSR。
 商品價格與庫存由 client-side 非同步載入，HTML 本身不含即時價格，不需針對價格相關問題給建議。
 
 【欄位單位說明】
 - max_request_per_minute：每分鐘最高請求數（req/min）
-- cache_hit_rate_pct：快取命中率（%），已預先計算，直接使用勿自行重算
+- combined json 裡的 {kind}_records = 實際打到 Worker 的請求數（cache miss）；cache_hit_{kind} = Cloudflare edge 直接回應（未進 Worker），{kind} 為頁面類型（product/category）
+- cache_hit_rate_{kind}_pct = cache_hit_{kind} / (cache_hit_{kind} + {kind}_records)，已預先計算，直接使用勿自行重算
 
 【異常判斷規則】
 只使用以下規則判斷，不可自行推斷或新增其他閾值：
 
 Render Time：
-- p95_ms > ${config.rules.ssr.p95_warn_ms}ms → ⚠️ 警告
-- p99_ms > ${config.rules.ssr.p99_warn_ms}ms → ⚠️ 警告
-- abnormal_render_rate_pct > ${config.rules.ssr.abnormal_render_rate}% → 🚨 異常（異常渲染率，5秒以上）
-- slow_render_rate_pct > ${config.rules.ssr.slow_render_rate}% → ⚠️ 警告（慢渲染率，3-5秒）
+- p95_ms > ${config.rules.renderTime.p95_warn_ms}ms → ⚠️ 警告
+- p99_ms > ${config.rules.renderTime.p99_warn_ms}ms → ⚠️ 警告
+- abnormal_render_rate_pct > ${config.rules.renderTime.abnormal_render_rate}% → 🚨 異常（異常渲染率，5秒以上）
+- slow_render_rate_pct > ${config.rules.renderTime.slow_render_rate}% → ⚠️ 警告（慢渲染率，3-5秒）
 
 Cache Hit Rate（cache_hits / 總請求數）：
-用途：偵測 cache 失效異常，不作為優化目標。理論上限約 21%，延長 TTL 無法改善。
+用途：偵測 cache 失效異常，不作為優化目標。商品頁理論上限約 21%，延長 TTL 無法改善。
 - < ${config.rules.cache.hit_rate_warn_pct}% → ⚠️ 警告
 - < ${config.rules.cache.hit_rate_abnormal_pct}% → 🚨 異常（可能為 cache 被清空或設定錯誤）
 
@@ -150,7 +158,7 @@ export function buildQuerySystemPrompt(dates) {
 ${sharedBackground()}
 
 【可用工具】
-- read_json：讀取每日 SSR／combined 效能 JSON（cache hit rate、P95/P99 render time 等）
+- read_json：讀取每日 SSR／combined 效能 JSON（cache hit rate、P95/P99 render time 等）。type 參數可填頁面類型（${pageKindKeys.join('/')}，分別對應${pageKindLabels}）或 'combined'
 - read_gsc_sheet：讀取 GSC Tracking Google Sheet（曝光、點擊、Coverage、5XX 錯誤、CWV 等），資料為週粒度
 - read_special_events：讀取人工記錄的特殊事件報告（如搶購活動造成的爬蟲錯誤暴增）。當數據出現異常波動時，應先呼叫此工具確認當天是否有已知特殊事件，再判斷是否為真實異常
 

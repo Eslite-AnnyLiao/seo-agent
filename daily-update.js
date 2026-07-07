@@ -12,12 +12,15 @@ import { buildDailyAnalysisPrompt, buildWeeklyAnalysisPrompt } from './prompts.j
 const DAILY_REPORTS_DIR  = resolve(config.analysisLogPath, 'reports', 'daily')
 const WEEKLY_REPORTS_DIR = resolve(config.analysisLogPath, 'reports', 'weekly')
 
+// PAGE_KIND_KEYS = ['product', 'category', ...]，新增頁面類型不用改這份檔案的邏輯本體
+const PAGE_KIND_KEYS = Object.keys(config.pageKinds)
+const ALL_TYPES = [...PAGE_KIND_KEYS, 'combined']
 
 function aggregateCrawlerStats(weekDates) {
   const totals = {}
   for (const date of weekDates) {
     try {
-      const dir = resolve(config.analysisLogPath, config.jsonPaths.combined)
+      const dir = resolve(config.analysisLogPath, config.combined.jsonPath)
       const file = readdirSync(dir).find(f => f.endsWith('.json') && f.includes(date))
       if (!file) continue
       const raw = JSON.parse(readFileSync(resolve(dir, file), 'utf-8'))
@@ -92,16 +95,27 @@ async function runDailyUpdate(skipFetch = false, skipToAnalysis = false) {
   }
 
   // ── Step 2: 上傳 Drive ────────────────────────
-  let ssrUpload, combinedUpload, ssrGas, combinedGas
+  const uploadResults = {}
+  const gasResults = {}
   if (!skipToAnalysis) {
     console.log('▶ Step 2：上傳 Drive')
-    ssrUpload      = JSON.parse(await executeTool('upload_to_drive', { type: 'ssr',      dates }))
-    combinedUpload = JSON.parse(await executeTool('upload_to_drive', { type: 'combined', dates }))
+    for (const type of ALL_TYPES) {
+      try {
+        uploadResults[type] = JSON.parse(await executeTool('upload_to_drive', { type, dates }))
+      } catch (e) {
+        console.warn(`  ⚠ [${type}] 上傳失敗（可能尚未設定 Drive 資料夾）：${e.message}`)
+      }
+    }
 
     // ── Step 3: 觸發 GAS ──────────────────────────
     console.log('▶ Step 3：觸發 GAS')
-    ssrGas      = JSON.parse(await executeTool('trigger_gas', { type: 'ssr',      dates }))
-    combinedGas = JSON.parse(await executeTool('trigger_gas', { type: 'combined', dates }))
+    for (const type of ALL_TYPES) {
+      try {
+        gasResults[type] = JSON.parse(await executeTool('trigger_gas', { type, dates }))
+      } catch (e) {
+        console.warn(`  ⚠ [${type}] GAS 觸發失敗（可能尚未設定 Sheet）：${e.message}`)
+      }
+    }
   } else {
     console.log('⏭ Step 2-3：跳過上傳與 GAS')
   }
@@ -119,19 +133,24 @@ async function runDailyUpdate(skipFetch = false, skipToAnalysis = false) {
     prev.setDate(prev.getDate() - 1)
     const prevStr = prev.toISOString().slice(0, 10).replace(/-/g, '')
 
-    const curSsr      = parseToolResult(await executeTool('read_json', { type: 'ssr',      date }))
     const curCombined = parseToolResult(await executeTool('read_json', { type: 'combined', date }))
-    const prvSsr      = parseToolResult(await executeTool('read_json', { type: 'ssr',      date: prevStr }))
     const prvCombined = parseToolResult(await executeTool('read_json', { type: 'combined', date: prevStr }))
 
     const qd = config.rules.qualifying_day
     const isQualifying = (curCombined?.total_records ?? 0) > qd.min_requests
       && (curCombined?.max_request_per_minute ?? 0) > qd.min_peak_rpm
 
+    const perKindBlocks = []
+    for (const kind of PAGE_KIND_KEYS) {
+      const label = config.pageKinds[kind].label
+      const cur = parseToolResult(await executeTool('read_json', { type: kind, date }))
+      const prv = parseToolResult(await executeTool('read_json', { type: kind, date: prevStr }))
+      perKindBlocks.push(`${label} SSR 今日：${JSON.stringify(cur)}\n${label} SSR 前日：${JSON.stringify(prv)}`)
+    }
+
     sections.push(`【${date} vs ${prevStr}】
 觀測達標日：${isQualifying ? '✅ 是' : '❌ 否（請求數或尖峰 RPM 未達門檻）'}
-SSR 今日：${JSON.stringify(curSsr)}
-SSR 前日：${JSON.stringify(prvSsr)}
+${perKindBlocks.join('\n')}
 Combined 今日：${JSON.stringify(curCombined)}
 Combined 前日：${JSON.stringify(prvCombined)}${specialEventsBlock(date)}`)
   }
@@ -162,9 +181,13 @@ Combined 前日：${JSON.stringify(prvCombined)}${specialEventsBlock(date)}`)
   console.log(`✅ SEO 每日更新完成`)
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
   if (!skipToAnalysis) {
-    console.log(`📁 上傳：SSR ${ssrUpload.count} 筆、Combined ${combinedUpload.count} 筆`)
-    console.log(`⚙️  GAS SSR：${ssrGas.success ? '✅ 成功' : '❌ 失敗'}`)
-    console.log(`⚙️  GAS Combined：${combinedGas.success ? '✅ 成功' : '❌ 失敗'}`)
+    for (const type of ALL_TYPES) {
+      const label = type === 'combined' ? 'Combined' : config.pageKinds[type].label
+      const up = uploadResults[type]
+      const gas = gasResults[type]
+      console.log(`📁 上傳：${label} ${up ? `${up.count} 筆` : '⏭ 略過（尚未設定）'}`)
+      console.log(`⚙️  GAS ${label}：${gas ? (gas.success ? '✅ 成功' : '❌ 失敗') : '⏭ 略過（尚未設定）'}`)
+    }
   }
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
   console.log(summary)
@@ -200,14 +223,20 @@ async function runWeeklyReport(baseDate = null) {
     const prevStr = prev.toISOString().slice(0, 10).replace(/-/g, '')
 
     try {
-      const curSsr      = parseToolResult(await executeTool('read_json', { type: 'ssr',      date }))
       const curCombined = parseToolResult(await executeTool('read_json', { type: 'combined', date }))
       const qd = config.rules.qualifying_day
       const isQualifying = (curCombined?.total_records ?? 0) > qd.min_requests
         && (curCombined?.max_request_per_minute ?? 0) > qd.min_peak_rpm
 
+      const perKindLines = []
+      for (const kind of PAGE_KIND_KEYS) {
+        const label = config.pageKinds[kind].label
+        const cur = parseToolResult(await executeTool('read_json', { type: kind, date }))
+        perKindLines.push(`${label}：${JSON.stringify(cur)}`)
+      }
+
       sections.push(`【${date}】觀測達標日：${isQualifying ? '✅ 是' : '❌ 否'}
-SSR：${JSON.stringify(curSsr)}
+${perKindLines.join('\n')}
 Combined：${JSON.stringify(curCombined)}${specialEventsBlock(date)}`)
     } catch {
       sections.push(`【${date}】無資料`)
