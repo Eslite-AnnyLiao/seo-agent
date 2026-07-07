@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────
 // config.js
-// 每月換新 sheet 時只需更新 sheets 區塊的
-// spreadsheetId 和 gasWebhookUrl
+// 每月換新 sheet 時只需更新每個頁面類型（pageKinds.*.sheet）與
+// combined.sheet 底下的 spreadsheetId 和 gasWebhookUrl
 //
 // 頁面類型 registry：驅動 tools.js / daily-update.js 的邏輯本體。
 // 要加新頁面類型（例如文章頁），照 pageKinds 這個形狀新增一筆設定即可，
