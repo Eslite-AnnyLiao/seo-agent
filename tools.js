@@ -399,6 +399,36 @@ function formatDate(d) {
   return d.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
 }
 
+// startDateStr/endDateStr 為 'YYYYMMDD'，回傳 startDate 隔天到 endDate（含）之間所有日期
+// （UTC 計算，避免本機時區造成的日期偏移）
+export function dateRangeExclusiveStart(startDateStr, endDateStr) {
+  const parse = (s) => new Date(`${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}T00:00:00Z`);
+  const cur = parse(startDateStr);
+  cur.setUTCDate(cur.getUTCDate() + 1);
+  const end = parse(endDateStr);
+  const dates = [];
+  while (cur <= end) {
+    dates.push(formatDate(cur));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+// ── 觀測達標日 / 觀察期停損 ─────────────────────
+export function isQualifyingDay(qdSource, qd) {
+  return (qdSource?.total_records ?? 0) > qd.min_requests
+      && (qdSource?.max_request_per_minute ?? 0) > qd.min_peak_rpm;
+}
+
+// qualifyingFlags：依日期順序排列的布林陣列（該日是否為觀測達標日）
+export function evaluateObservationWindow(qualifyingFlags, windowDays, targetCount) {
+  const daysElapsed = qualifyingFlags.length;
+  const cumulativeQualifyingDays = qualifyingFlags.filter(Boolean).length;
+  const targetReached = cumulativeQualifyingDays >= targetCount;
+  const stopLossHit = daysElapsed >= windowDays && !targetReached;
+  return { daysElapsed, cumulativeQualifyingDays, targetReached, stopLossHit };
+}
+
 export function getYesterday() {
   const d = new Date();
   d.setDate(d.getDate() - 1);

@@ -72,10 +72,12 @@ export function buildDailyAnalysisPrompt(sections) {
 ${sharedBackground()}
 
 【觀測達標日說明】
-放量觀察期以累積 5 個觀測達標日為準（門檻：請求數 > ${config.rules.qualifying_day.min_requests}、尖峰 RPM > ${config.rules.qualifying_day.min_peak_rpm}）。
-每天資料開頭已標注是否為觀測達標日，請在報告中顯示此狀態。
+放量觀察期以累積 ${config.rules.qualifying_day.target_count} 個觀測達標日為準（門檻：請求數 > ${config.rules.qualifying_day.min_requests}、尖峰 RPM > ${config.rules.qualifying_day.min_peak_rpm}）。
+每天資料開頭已標注是否為觀測達標日與「觀察期進度」（第幾天／已累積幾個達標日）。
 未達觀測達標日時，只需標注「不計入觀測」，不需建議放量或加量。放量決策由人工判斷。
 ${config.rules.rollout.start_date} 為本階段（${config.rules.rollout.current_stage}）切換日，當天流量為前後兩個階段混合，數據不具代表性，**不計入觀測達標日**。
+
+觀察期停損點：${config.rules.rollout.observation_window_days} 天內若未能累積滿 ${config.rules.qualifying_day.target_count} 個達標日，即為觀察期上限。若「觀察期進度」內容標注 🚨，代表已達此停損點但仍未達標，報告須將此事項提升為最優先顯示的重點，明確建議人工檢討門檻設定或流量分配，而非僅列為一般狀態。
 
 ${sections.join('\n\n')}
 

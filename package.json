@@ -7,7 +7,8 @@
     "upload": "node --env-file=.env daily-update.js --from-upload",
     "analysis": "node --env-file=.env daily-update.js --analysis-only",
     "weekly": "node --env-file=.env daily-update.js --weekly",
-    "query": "node --env-file=.env seo-agent.js"
+    "query": "node --env-file=.env seo-agent.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "googleapis": "^144.0.0"

@@ -5,7 +5,7 @@
 
 import { writeFileSync, mkdirSync, readdirSync, readFileSync } from 'fs'
 import { resolve } from 'path'
-import { executeTool, getDatesToProcess, uploadReportToDrive, extractBotName, loadSpecialEvents } from './tools.js'
+import { executeTool, getDatesToProcess, uploadReportToDrive, extractBotName, loadSpecialEvents, isQualifyingDay, evaluateObservationWindow, dateRangeExclusiveStart } from './tools.js'
 import { config } from './config.js'
 import { buildDailyAnalysisPrompt, buildWeeklyAnalysisPrompt } from './prompts.js'
 
@@ -74,6 +74,20 @@ function specialEventsBlock(date) {
   return `\n已知特殊事件：\n${events.map(e => e.content).join('\n\n')}`
 }
 
+// 依 config.rules.rollout.start_date 到 uptoDate 之間每一天是否為觀測達標日，
+// 算出觀察期進度（第幾天／累積幾個達標日）與是否已達 10 天停損點
+async function getObservationWindowStatus(uptoDate) {
+  const qd = config.rules.qualifying_day
+  const startDate = config.rules.rollout.start_date.replace(/\//g, '')
+  const dates = dateRangeExclusiveStart(startDate, uptoDate)
+  const flags = []
+  for (const d of dates) {
+    const data = parseToolResult(await executeTool('read_json', { type: qd.page_kind, date: d }))
+    flags.push(isQualifyingDay(data, qd))
+  }
+  return evaluateObservationWindow(flags, config.rules.rollout.observation_window_days, qd.target_count)
+}
+
 async function runDailyUpdate(skipFetch = false, skipToAnalysis = false) {
   const dates = getDatesToProcess()
   const today = dates.at(-1)
@@ -136,20 +150,27 @@ async function runDailyUpdate(skipFetch = false, skipToAnalysis = false) {
     const curCombined = parseToolResult(await executeTool('read_json', { type: 'combined', date }))
     const prvCombined = parseToolResult(await executeTool('read_json', { type: 'combined', date: prevStr }))
 
-    const qd = config.rules.qualifying_day
-    const isQualifying = (curCombined?.total_records ?? 0) > qd.min_requests
-      && (curCombined?.max_request_per_minute ?? 0) > qd.min_peak_rpm
-
+    const perKindData = {}
     const perKindBlocks = []
     for (const kind of PAGE_KIND_KEYS) {
       const label = config.pageKinds[kind].label
       const cur = parseToolResult(await executeTool('read_json', { type: kind, date }))
       const prv = parseToolResult(await executeTool('read_json', { type: kind, date: prevStr }))
+      perKindData[kind] = cur
       perKindBlocks.push(`${label} SSR 今日：${JSON.stringify(cur)}\n${label} SSR 前日：${JSON.stringify(prv)}`)
     }
 
+    const qd = config.rules.qualifying_day
+    const qdSource = perKindData[qd.page_kind] ?? curCombined
+    const qdLabel = config.pageKinds[qd.page_kind]?.label ?? 'Combined'
+    const isQualifying = isQualifyingDay(qdSource, qd)
+    const windowStatus = await getObservationWindowStatus(date)
+    const windowLine = `觀察期進度：第 ${windowStatus.daysElapsed}/${config.rules.rollout.observation_window_days} 天，累積 ${windowStatus.cumulativeQualifyingDays}/${qd.target_count} 個達標日`
+      + (windowStatus.stopLossHit ? '（🚨 已達觀察期上限但未達標，建議人工檢討門檻或流量分配）' : '')
+
     sections.push(`【${date} vs ${prevStr}】
-觀測達標日：${isQualifying ? '✅ 是' : '❌ 否（請求數或尖峰 RPM 未達門檻）'}
+觀測達標日（依${qdLabel}）：${isQualifying ? '✅ 是' : '❌ 否（請求數或尖峰 RPM 未達門檻）'}
+${windowLine}
 ${perKindBlocks.join('\n')}
 Combined 今日：${JSON.stringify(curCombined)}
 Combined 前日：${JSON.stringify(prvCombined)}${specialEventsBlock(date)}`)
@@ -224,18 +245,22 @@ async function runWeeklyReport(baseDate = null) {
 
     try {
       const curCombined = parseToolResult(await executeTool('read_json', { type: 'combined', date }))
-      const qd = config.rules.qualifying_day
-      const isQualifying = (curCombined?.total_records ?? 0) > qd.min_requests
-        && (curCombined?.max_request_per_minute ?? 0) > qd.min_peak_rpm
 
+      const perKindData = {}
       const perKindLines = []
       for (const kind of PAGE_KIND_KEYS) {
         const label = config.pageKinds[kind].label
         const cur = parseToolResult(await executeTool('read_json', { type: kind, date }))
+        perKindData[kind] = cur
         perKindLines.push(`${label}：${JSON.stringify(cur)}`)
       }
 
-      sections.push(`【${date}】觀測達標日：${isQualifying ? '✅ 是' : '❌ 否'}
+      const qd = config.rules.qualifying_day
+      const qdSource = perKindData[qd.page_kind] ?? curCombined
+      const qdLabel = config.pageKinds[qd.page_kind]?.label ?? 'Combined'
+      const isQualifying = isQualifyingDay(qdSource, qd)
+
+      sections.push(`【${date}】觀測達標日（依${qdLabel}）：${isQualifying ? '✅ 是' : '❌ 否'}
 ${perKindLines.join('\n')}
 Combined：${JSON.stringify(curCombined)}${specialEventsBlock(date)}`)
     } catch {

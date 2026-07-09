@@ -111,20 +111,18 @@ export const config = {
       traffic_percent: 20,
       rollback_trigger: '5xx rate > 0.5% 或 SSR P95 > 前階段觀測值 × 1.2',
       start_date: '2026/06/30',
+      observation_window_days: 10,  // 觀察期停損點：此天數內未累積滿 target_count 個達標日 → 需人工檢討
     },
     qualifying_day: {
+      page_kind: 'product',  // 達標日依哪個頁面類型判斷（目前主要放量對象是商品頁，非 combined 加總）
       min_requests: 350000,  // 當日 Worker 請求數
       min_peak_rpm: 1300,    // 當日尖峰 RPM
+      target_count: 5,       // 累積滿此數量的達標日即可考慮升階（放量決策仍由人工判斷）
     },
     knownChanges: [
       {
         date: '2026/06/16',
         description: '移除 SSR 中的 purchase_status API，改用 prices v2 API；預期此日後 render time（P95/P99）明顯改善',
-      },
-      {
-        date: '2026/06/12',
-        description:
-          '因針對「找不到網頁 (404)」與「已檢索 - 目前尚未建立索引」兩項 Coverage 問題於 GSC 送出重新驗證（Validate Fix），驗證期間 GSC Tracking Sheet 以下欄位數據凍結不再更新：所有索引＋檢索、有效 (Coverage)（涵蓋範圍）、排除 (網頁-未建立索引)、檢索未索引 (排除 > 已檢索 - 目前尚未建立索引)、錯誤 (伺服器錯誤5XX)、已找到、重複頁面、已提交 - 已建立索引 (下拉式選單)、已提交 - 未建立索引 (下拉式選單)、外部連結（左側選單最下方的「連結」）、100 (連結)（連入連結）、200 (連結)（連入連結）、100 (網域)（連結網站數）、200 (網域)（連結網站數）、100 (目標網頁降序)（最常連結的網站）、200 (目標網頁)（最常連結的網站）、內部連結、500（熱門連結網頁）、1000（熱門連結網頁）、有效/所有、未索引/有效、Sitemap/有效。這些欄位數週內數值不變屬預期現象，不代表問題無變化、已改善或惡化，不可視為異常或改善訊號',
       },
     ],
   },
