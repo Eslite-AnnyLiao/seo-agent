@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isQualifyingDay, evaluateObservationWindow, dateRangeExclusiveStart } from '../tools.js'
+import { isQualifyingDay, evaluateObservationWindow, dateRangeExclusiveStart, parseWeeklyReportResponse } from '../tools.js'
 
 const qd = { min_requests: 350000, min_peak_rpm: 1300 }
 
@@ -51,4 +51,42 @@ test('evaluateObservationWindow：未滿 10 天、未達標 → 尚未停損，�
   const status = evaluateObservationWindow(flags, 10, 5)
   assert.equal(status.stopLossHit, false)
   assert.equal(status.targetReached, false)
+})
+
+test('parseWeeklyReportResponse：正常回應——完整切出 markdown 與 chat 兩段', () => {
+  const data = {
+    stop_reason: 'end_turn',
+    content: [{ type: 'text', text: '===MARKDOWN===\n完整週報內容\n===CHAT===\n精簡摘要內容' }],
+  }
+  const result = parseWeeklyReportResponse(data)
+  assert.equal(result.markdown, '完整週報內容')
+  assert.equal(result.chat, '精簡摘要內容')
+  assert.equal(result.truncated, false)
+  assert.equal(result.chatParsed, true)
+})
+
+test('parseWeeklyReportResponse：stop_reason=max_tokens 截斷、===CHAT=== 從未出現 → chat 改用備援訊息，不外洩原始回應', () => {
+  // 模擬本次事故：模型還在寫 MARKDOWN 表格時就被截斷，rawText 含前言、字面 ===MARKDOWN=== 標記、表格，但沒有 ===CHAT===
+  const rawText = '我先整理本週數據，進行異常判斷，再輸出週報。\n\n===MARKDOWN===\n## 週報\n| P95 | 2148 |\n分類頁 404 Rate = **'
+  const data = {
+    stop_reason: 'max_tokens',
+    content: [{ type: 'text', text: rawText }],
+  }
+  const result = parseWeeklyReportResponse(data)
+  assert.equal(result.truncated, true)
+  assert.equal(result.chatParsed, false)
+  assert.doesNotMatch(result.chat, /===MARKDOWN===/) // 不可外洩字面分隔標記
+  assert.doesNotMatch(result.chat, /我先整理本週數據/) // 不可外洩模型前言
+  assert.doesNotMatch(result.chat, /\|/) // 不可外洩表格語法
+})
+
+test('parseWeeklyReportResponse：非截斷但格式漂移、===CHAT=== 仍缺席 → 同樣改用備援訊息', () => {
+  const data = {
+    stop_reason: 'end_turn',
+    content: [{ type: 'text', text: '===MARKDOWN===\n完整週報內容（模型忘了輸出分隔標記後面的段落）' }],
+  }
+  const result = parseWeeklyReportResponse(data)
+  assert.equal(result.truncated, false)
+  assert.equal(result.chatParsed, false)
+  assert.doesNotMatch(result.chat, /完整週報內容/)
 })

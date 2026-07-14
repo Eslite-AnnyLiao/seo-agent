@@ -100,7 +100,7 @@ ${JSON.stringify(gscData)}
 GSC 分析說明：
 - 資料為週粒度，欄位順序：A=指標名稱、B=月趨勢、C=週變化、D=歷史最大、E=歷史最小、G=最新週數值
 - 重點關注指標：曝光、點擊、/product曝光、/product點擊、有效(Coverage)、錯誤(伺服器錯誤5XX)、重複頁面、手機CWV三段
-- Astro 僅佔 ~${config.rules.rollout.traffic_percent}% 流量，GSC 波動不可直接歸因於 Astro，需說明影響有限
+- Astro 僅佔約 ${config.rules.rollout.traffic_percent}% 流量，GSC 波動不可直接歸因於 Astro，需說明影響有限
 - 若 /product 曝光或點擊有明顯週變化，需與 SSR 效能數據交叉比對`
     : '【GSC 週期數據】本週 GSC 資料讀取失敗，略過 GSC 分析。'
 
@@ -135,7 +135,8 @@ ${gscSection}
 （注意事項區塊結尾加上：> ⚠️ 以上注意事項為 AI 建議，請由工程師判斷後再行動。）
 ===CHAT===
 （Google Chat 精簡摘要：粗體用 *文字*（單星號）、不使用表格、分隔線用 ────────────）
-（只包含以下四個區塊，每區塊 3~5 行：
+（Google Chat 會把 ~文字~ 解析為刪除線，數字區間一律用「-」（例如 13-15%），全文不可出現任何 ~ 字元）
+（只包含以下四個區塊，每區塊 3-5 行：
   1. 本週重點（效能概況 + 一行流量摘要 + 觀測達標日數）
   2. GSC 摘要（有資料時：/product 曝光與點擊週變化、Coverage 有效頁數變化、CWV 慢頁數變化，每項附具體數字；無資料則略過）
   3. SEO 爬蟲統計（前三名 bot 與請求量，標注 AI 爬蟲佔比）

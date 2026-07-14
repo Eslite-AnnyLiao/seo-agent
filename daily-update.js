@@ -5,7 +5,7 @@
 
 import { writeFileSync, mkdirSync, readdirSync, readFileSync } from 'fs'
 import { resolve } from 'path'
-import { executeTool, getDatesToProcess, uploadReportToDrive, extractBotName, loadSpecialEvents, isQualifyingDay, evaluateObservationWindow, dateRangeExclusiveStart } from './tools.js'
+import { executeTool, getDatesToProcess, uploadReportToDrive, extractBotName, loadSpecialEvents, isQualifyingDay, evaluateObservationWindow, dateRangeExclusiveStart, parseWeeklyReportResponse } from './tools.js'
 import { config } from './config.js'
 import { buildDailyAnalysisPrompt, buildWeeklyAnalysisPrompt } from './prompts.js'
 
@@ -276,7 +276,7 @@ Combined：${JSON.stringify(curCombined)}${specialEventsBlock(date)}`)
   }
 
   const crawlerStats = aggregateCrawlerStats(weekDates)
-  const dateRange = `${weekDates[0]} ~ ${weekDates[weekDates.length - 1]}`
+  const dateRange = `${weekDates[0]} - ${weekDates[weekDates.length - 1]}`
   const res = await fetch(`${process.env.ANTHROPIC_BASE_URL}/v1/messages`, {
     method:  'POST',
     headers: {
@@ -286,19 +286,21 @@ Combined：${JSON.stringify(curCombined)}${specialEventsBlock(date)}`)
     },
     body: JSON.stringify({
       model:      'claude-4.6-sonnet',
-      max_tokens: 8000,
+      max_tokens: 12000,
       messages: [{ role: 'user', content: buildWeeklyAnalysisPrompt(sections, dateRange, gscData, crawlerStats) }],
     }),
   })
 
   if (!res.ok) throw new Error(`週報 API 錯誤 ${res.status}: ${await res.text()}`)
 
-  const data     = await res.json()
-  const rawText  = data.content.find(b => b.type === 'text')?.text ?? ''
-  const mdMatch   = rawText.split('===MARKDOWN===')[1]?.split('===CHAT===')[0]?.trim()
-  const chatMatch = rawText.split('===CHAT===')[1]?.trim()
-  const markdown  = mdMatch   ?? rawText
-  const chat      = chatMatch ?? rawText
+  const data = await res.json()
+  const { markdown, chat, truncated, chatParsed } = parseWeeklyReportResponse(data)
+  if (truncated) {
+    console.warn('⚠️ 週報 API 回應被截斷（stop_reason=max_tokens），Chat 摘要將改用備援訊息，請檢查 Drive 完整版是否也不完整')
+  }
+  if (!chatParsed) {
+    console.warn('⚠️ 週報回應找不到 ===CHAT=== 分隔標記，Chat 摘要將改用備援訊息')
+  }
 
   const reportFileName = `weekly-${weekDates[weekDates.length - 1]}.md`
   const reportPath = saveReport(WEEKLY_REPORTS_DIR, reportFileName, markdown)

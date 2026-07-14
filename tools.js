@@ -429,6 +429,19 @@ export function evaluateObservationWindow(qualifyingFlags, windowDays, targetCou
   return { daysElapsed, cumulativeQualifyingDays, targetReached, stopLossHit };
 }
 
+// 解析週報 API 回應，切出 Drive 用完整 markdown 與 Chat 用精簡摘要
+// 找不到 ===CHAT=== 分隔標記時（截斷或格式漂移），不可外洩原始回應到 chat，改用固定備援訊息
+const CHAT_FALLBACK_MESSAGE = '⚠️ 本週報告內容較長，Chat 摘要產生異常，請見下方 Drive 完整版。'
+export function parseWeeklyReportResponse(data) {
+  const rawText   = data.content?.find(b => b.type === 'text')?.text ?? '';
+  const truncated = data.stop_reason === 'max_tokens';
+  const mdMatch    = rawText.split('===MARKDOWN===')[1]?.split('===CHAT===')[0]?.trim();
+  const chatMatch  = rawText.split('===CHAT===')[1]?.trim();
+  const markdown   = mdMatch ?? rawText;
+  const chat       = chatMatch ?? CHAT_FALLBACK_MESSAGE;
+  return { markdown, chat, truncated, chatParsed: Boolean(chatMatch) };
+}
+
 export function getYesterday() {
   const d = new Date();
   d.setDate(d.getDate() - 1);
