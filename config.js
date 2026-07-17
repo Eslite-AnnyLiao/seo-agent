@@ -22,13 +22,13 @@ export const config = {
     product: {
       label: '商品頁',
       jsonPath: 'daily-analysis-result/datadog-export/product/ssr',
-      driveFolderId: '1n2WMWg-fPS4aiFoGAEjoE3UebGN0oY50',
+      driveFolderId: '1_YHgUBBfcXmmWKwEUybyE-RI5eUaqqEN',
       seoAgentFolderId: '1MmLWR2m0MtuQ4v13o82HBvcm0XT5cPuJ',
       sheet: {
-        spreadsheetId: '1fSoJGQk34cGHJYLJ_nUcqLFqjaV8IQ623NjpKAEXkjM', // 商品頁 SSR 數據統計
+        spreadsheetId: '1uLEFR9KyYmTBMn6y9P16W2-tqrvEsApHWVW-BAsTF1g', // 商品頁 SSR 數據統計
         sheetName: '每日資料',
         gasWebhookUrl:
-          'https://script.google.com/a/macros/eslite.com/s/AKfycbxBdD5q2BSQ1BUg9jJlNydcWTNf-aMQpYg6pslkOv2euhYksWmtuSKzZkWASznEX38E/exec',
+          'https://script.google.com/a/macros/eslite.com/s/AKfycbxNfhcyYC8jhP9y2-DXHFiWipX1DE1tr15yfaS4ONmftmaQx03NA6h3tjhu3Qp4IykumA/exec',
       },
       combinedRecordsKey: 'ssr_records',
       combinedCacheHitKey: 'cloudflare_cache_hit',
@@ -39,13 +39,13 @@ export const config = {
     category: {
       label: '分類頁',
       jsonPath: 'daily-analysis-result/datadog-export/category/ssr',
-      driveFolderId: '1sGmnES8iDttMIvo8onPSl2dLnr1RznBf',
+      driveFolderId: '1mvjXjpELu6QWaU37XC16k3_lX8-c101O',
       seoAgentFolderId: '145MJEd9TnIO22GAEnQtbfKGCRvRHwcmv',
       sheet: {
-        spreadsheetId: '13onChUJX9e-M6rtlWDghstMk_sQtgkrpUsgUaya4VLU', // 分類頁 SSR 數據統計
+        spreadsheetId: '1wuHBqRDfzpWuoRffDAW6e9K-t2kZrvaFjSSa-HhzDms', // 分類頁 SSR 數據統計
         sheetName: '每日資料',
         gasWebhookUrl:
-          'https://script.google.com/a/macros/eslite.com/s/AKfycbxYhqlyifTBAe6ctxJevIYZlxn07Qw2KT9QCRG67hMcCrKvIVN9UT0sA8FtCHmiJUb2/exec',
+          'https://script.google.com/a/macros/eslite.com/s/AKfycbzTSgIBFmTPOoJ_5Dengop6_N-rF4k09ZmpOSu2DcxRf80PVMx62YcRLceVdKBM0NNH/exec',
       },
       combinedRecordsKey: 'category_records',
       combinedCacheHitKey: 'cloudflare_cache_hit_category',
@@ -59,13 +59,13 @@ export const config = {
   // combined 是跨頁面類型的彙總，不是某一種頁面，獨立於 pageKinds 之外
   combined: {
     jsonPath: 'daily-analysis-result/datadog-export/combined',
-    driveFolderId: '1rF66lEG52iOAUNgm__Dx7GMow6VYwkSY',
+    driveFolderId: '1y0CMD0MhDrDtM-sUHFnKqS1Jni2wNFah',
     seoAgentFolderId: '1w089WQQpTFmkRtLN6jwPE7nFpUzhL2Pi',
     sheet: {
-      spreadsheetId: '1CbjrsroFnvpXwqBwZSxETOn87Oi156Dref6sBJEHOZA', // 全站流量總覽
+      spreadsheetId: '1B8LnVlbRgbhci3PWinoNvYRWb93ZRbHDLnZCwrhBXRo', // 全站流量總覽
       sheetName: '每日資料',
       gasWebhookUrl:
-        'https://script.google.com/a/macros/eslite.com/s/AKfycbycxFdWQeqmyOvVBn1HmmxLJ4txq21txeV9C__NGco4SkkoO9SIZU0nD49qC-qdi1_5/exec',
+        'https://script.google.com/a/macros/eslite.com/s/AKfycbySJAnYvCx_Aovz8uegyXVLuO-F0kanq82cfUbnCL7XQ7BC-NBW0Hxx_MHKyYc3_Qjx/exec',
     },
   },
 
