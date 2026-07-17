@@ -110,7 +110,7 @@ export const config = {
       guid_digits: '10–59',
       traffic_percent: 50,
       rollback_trigger: '5xx rate > 0.5% 或 SSR P95 > 前階段觀測值 × 1.2',
-      start_date: '2026/07/16',
+      start_date: '2026/07/17',
       observation_window_days: 10,  // 觀察期停損點：此天數內未累積滿 target_count 個達標日 → 需人工檢討
     },
     qualifying_day: {
