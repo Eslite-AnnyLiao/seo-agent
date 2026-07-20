@@ -25,10 +25,10 @@ export const config = {
       driveFolderId: '1_YHgUBBfcXmmWKwEUybyE-RI5eUaqqEN',
       seoAgentFolderId: '1MmLWR2m0MtuQ4v13o82HBvcm0XT5cPuJ',
       sheet: {
-        spreadsheetId: '1uLEFR9KyYmTBMn6y9P16W2-tqrvEsApHWVW-BAsTF1g', // 商品頁 SSR 數據統計
+        spreadsheetId: '1fSoJGQk34cGHJYLJ_nUcqLFqjaV8IQ623NjpKAEXkjM', // 商品頁 SSR 數據統計
         sheetName: '每日資料',
         gasWebhookUrl:
-          'https://script.google.com/a/macros/eslite.com/s/AKfycbxNfhcyYC8jhP9y2-DXHFiWipX1DE1tr15yfaS4ONmftmaQx03NA6h3tjhu3Qp4IykumA/exec',
+          'https://script.google.com/a/macros/eslite.com/s/AKfycby4IbxbuWMtFRlMA4166-9IAR5-Skjm_ncUK2TubVUJjn4Rw7sLl6TcprNNhBiCB20i/exec',
       },
       combinedRecordsKey: 'ssr_records',
       combinedCacheHitKey: 'cloudflare_cache_hit',
@@ -42,10 +42,10 @@ export const config = {
       driveFolderId: '1mvjXjpELu6QWaU37XC16k3_lX8-c101O',
       seoAgentFolderId: '145MJEd9TnIO22GAEnQtbfKGCRvRHwcmv',
       sheet: {
-        spreadsheetId: '1wuHBqRDfzpWuoRffDAW6e9K-t2kZrvaFjSSa-HhzDms', // 分類頁 SSR 數據統計
+        spreadsheetId: '13onChUJX9e-M6rtlWDghstMk_sQtgkrpUsgUaya4VLU', // 分類頁 SSR 數據統計
         sheetName: '每日資料',
         gasWebhookUrl:
-          'https://script.google.com/a/macros/eslite.com/s/AKfycbzTSgIBFmTPOoJ_5Dengop6_N-rF4k09ZmpOSu2DcxRf80PVMx62YcRLceVdKBM0NNH/exec',
+          'https://script.google.com/a/macros/eslite.com/s/AKfycby3LC2CoV3fANfsU-X9X0Y83jDmjll9LoFO3GxgK_JScCur3vBlLwXDihvK7-befkp9/exec',
       },
       combinedRecordsKey: 'category_records',
       combinedCacheHitKey: 'cloudflare_cache_hit_category',
