@@ -106,18 +106,18 @@ export const config = {
       abnormal_pct: 15,           // 404 率高於此值 → 🚨 異常
     },
     rollout: {
-      current_stage: 'P4',
-      guid_digits: '10–59',
-      traffic_percent: 50,
+      current_stage: 'P5',
+      guid_digits: '10–89',
+      traffic_percent: 80,
       rollback_trigger: '5xx rate > 0.5% 或 SSR P95 > 前階段觀測值 × 1.2',
-      start_date: '2026/07/17',
+      start_date: '2026/08/04',
       observation_window_days: 10,  // 觀察期停損點：此天數內未累積滿 target_count 個達標日 → 需人工檢討
     },
     qualifying_day: {
       page_kind: 'product',  // 達標日依哪個頁面類型判斷（目前主要放量對象是商品頁，非 combined 加總）
-      min_requests: 480000,  // 當日 Worker 請求數
-      min_peak_rpm: 2900,    // 當日尖峰 RPM
-      target_count: 5,       // 累積滿此數量的達標日即可考慮升階（放量決策仍由人工判斷）
+      min_requests: 1130000, // 當日 Worker 請求數
+      min_peak_rpm: 3800,    // 當日尖峰 RPM
+      target_count: 10,       // 累積滿此數量的達標日即可考慮升階（放量決策仍由人工判斷）
     },
     knownChanges: [
       {
