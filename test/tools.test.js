@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isQualifyingDay, evaluateObservationWindow, dateRangeExclusiveStart, parseWeeklyReportResponse } from '../tools.js'
+import { isQualifyingDay, evaluateObservationWindow, dateRangeExclusiveStart, parseWeeklyReportResponse, isAuthError } from '../tools.js'
 
 const qd = { min_requests: 350000, min_peak_rpm: 1300 }
 
@@ -26,6 +26,14 @@ test('evaluateObservationWindow：累積滿 target_count 即達標，不受 stop
   assert.equal(status.cumulativeQualifyingDays, 5)
   assert.equal(status.targetReached, true)
   assert.equal(status.stopLossHit, false)
+})
+
+test('isAuthError：認得 scope 不足（insufficient permission）與既有的 reauth 類錯誤', () => {
+  assert.equal(isAuthError(new Error('Insufficient Permission')), true)
+  assert.equal(isAuthError(new Error('ACCESS_TOKEN_SCOPE_INSUFFICIENT: Insufficient Permission')), true)
+  assert.equal(isAuthError(new Error('invalid_grant')), true)
+  assert.equal(isAuthError(new Error('reauth required')), true)
+  assert.equal(isAuthError(new Error('Not Found')), false)
 })
 
 test('evaluateObservationWindow：滿 10 天但未達標 → 觸發停損', () => {

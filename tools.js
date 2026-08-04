@@ -178,9 +178,14 @@ export function loadSpecialEvents(date) {
 }
 
 // ── 認證工具 ───────────────────────────────────
-function isAuthError(err) {
+export function isAuthError(err) {
   const msg = (err.message ?? JSON.stringify(err)).toLowerCase();
-  return msg.includes('invalid_rapt') || msg.includes('invalid_grant') || msg.includes('reauth');
+  return (
+    msg.includes('invalid_rapt') ||
+    msg.includes('invalid_grant') ||
+    msg.includes('reauth') ||
+    msg.includes('insufficient permission')
+  );
 }
 
 function reAuthenticate() {
