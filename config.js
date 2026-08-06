@@ -111,7 +111,7 @@ export const config = {
       traffic_percent: 80,
       rollback_trigger: '5xx rate > 0.5% 或 SSR P95 > 前階段觀測值 × 1.2',
       start_date: '2026/08/04',
-      observation_window_days: 10,  // 觀察期停損點：此天數內未累積滿 target_count 個達標日 → 需人工檢討
+      observation_window_days: 20,  // 觀察期停損點：此天數內未累積滿 target_count 個達標日 → 需人工檢討（依歷史聯合達標率 ~41% 校準，20 天湊滿 10 個達標日機率 ~28%，非嚴格保證，只是比 10 天合理）
     },
     qualifying_day: {
       page_kind: 'product',  // 達標日依哪個頁面類型判斷（目前主要放量對象是商品頁，非 combined 加總）
