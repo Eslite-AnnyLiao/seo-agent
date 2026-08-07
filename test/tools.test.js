@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isQualifyingDay, evaluateObservationWindow, dateRangeExclusiveStart, parseWeeklyReportResponse, isAuthError } from '../tools.js'
+import { isQualifyingDay, evaluateObservationWindow, dateRangeExclusiveStart, parseWeeklyReportResponse, isAuthError, shiftDates, calcWowChangePct, buildCrawlerWow, average, buildSsrWow } from '../tools.js'
 
 const qd = { min_requests: 350000, min_peak_rpm: 1300 }
 
@@ -97,4 +97,49 @@ test('parseWeeklyReportResponse：非截斷但格式漂移、===CHAT=== 仍缺�
   assert.equal(result.truncated, false)
   assert.equal(result.chatParsed, false)
   assert.doesNotMatch(result.chat, /完整週報內容/)
+})
+
+test('shiftDates：整批位移 7 天，用於算上週同期日期', () => {
+  assert.deepEqual(
+    shiftDates(['20260731', '20260801'], 7),
+    ['20260724', '20260725'],
+  )
+})
+
+test('calcWowChangePct：計算週對週變化率，上週基準為 0 或任一邊缺資料時回傳 null 避免誤算', () => {
+  assert.equal(calcWowChangePct(95148, 84700), 12.3)
+  assert.equal(calcWowChangePct(80, 100), -20)
+  assert.equal(calcWowChangePct(100, 0), null)
+  assert.equal(calcWowChangePct(0, 0), null)
+  assert.equal(calcWowChangePct(null, 2000), null) // 本週缺資料，不可讓 null 被當 0 算出誤導的變化率
+  assert.equal(calcWowChangePct(2000, null), null) // 上週缺資料
+})
+
+test('average：忽略缺資料的日期取平均，全部缺值回傳 null', () => {
+  assert.equal(average([2000, 2200, 2400]), 2200)
+  assert.equal(average([2000, null, 2400, undefined]), 2200) // 中間缺一天不拉低平均
+  assert.equal(average([null, undefined]), null)
+  assert.equal(average([]), null)
+})
+
+test('buildCrawlerWow：合併本週／上週分類統計，算出總量與各分類的變化率', () => {
+  const current  = { grandTotal: 95148, groupTotals: { 'Google系': 80000, 'AI系': 700, 'SEO工具': 5000 } }
+  const previous = { grandTotal: 84700, groupTotals: { 'Google系': 75000, 'AI系': 500 } } // 上週沒有 SEO工具分類
+  const wow = buildCrawlerWow(current, previous)
+  assert.equal(wow.grandTotal.changePct, 12.3)
+  assert.equal(wow.groups['AI系'].current, 700)
+  assert.equal(wow.groups['AI系'].previous, 500)
+  assert.equal(wow.groups['AI系'].changePct, 40)
+  assert.equal(wow.groups['SEO工具'].previous, 0)
+  assert.equal(wow.groups['SEO工具'].changePct, null) // 上週基準為 0
+})
+
+test('buildSsrWow：合併本週／上週各頁面類型的 SSR 週均值，算出各指標的變化率', () => {
+  const metrics  = ['p95_ms', 'abnormal_render_rate_pct']
+  const current  = { product: { p95_ms: 2200, abnormal_render_rate_pct: 1.5 }, category: { p95_ms: 1800, abnormal_render_rate_pct: 0.5 } }
+  const previous = { product: { p95_ms: 2000, abnormal_render_rate_pct: 1.0 }, category: { p95_ms: null, abnormal_render_rate_pct: null } } // 分類頁上週缺資料
+  const wow = buildSsrWow(current, previous, metrics)
+  assert.equal(wow.product.p95_ms.changePct, 10) // 效能變差 10%
+  assert.equal(wow.product.abnormal_render_rate_pct.changePct, 50)
+  assert.equal(wow.category.p95_ms.changePct, null) // 上週缺資料，不可誤算
 })

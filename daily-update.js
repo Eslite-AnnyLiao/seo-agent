@@ -5,7 +5,7 @@
 
 import { writeFileSync, mkdirSync, readdirSync, readFileSync } from 'fs'
 import { resolve } from 'path'
-import { executeTool, getDatesToProcess, uploadReportToDrive, extractBotName, loadSpecialEvents, isQualifyingDay, evaluateObservationWindow, dateRangeExclusiveStart, parseWeeklyReportResponse } from './tools.js'
+import { executeTool, getDatesToProcess, uploadReportToDrive, extractBotName, loadSpecialEvents, isQualifyingDay, evaluateObservationWindow, dateRangeExclusiveStart, parseWeeklyReportResponse, shiftDates, buildCrawlerWow, average, buildSsrWow } from './tools.js'
 import { config } from './config.js'
 import { buildDailyAnalysisPrompt, buildWeeklyAnalysisPrompt } from './prompts.js'
 
@@ -15,6 +15,23 @@ const WEEKLY_REPORTS_DIR = resolve(config.analysisLogPath, 'reports', 'weekly')
 // PAGE_KIND_KEYS = ['product', 'category', ...]，新增頁面類型不用改這份檔案的邏輯本體
 const PAGE_KIND_KEYS = Object.keys(config.pageKinds)
 const ALL_TYPES = [...PAGE_KIND_KEYS, 'combined']
+const SSR_WOW_METRICS = ['p95_ms', 'p99_ms', 'abnormal_render_rate_pct', 'slow_render_rate_pct']
+
+// 各頁面類型在 weekDates 這幾天的 SSR 效能週均值（忽略缺資料的日期）
+async function aggregateSsrWeeklyAvg(weekDates) {
+  const result = {}
+  for (const kind of PAGE_KIND_KEYS) {
+    const daily = []
+    for (const date of weekDates) {
+      const parsed = parseToolResult(await executeTool('read_json', { type: kind, date }))
+      if (parsed) daily.push(parsed)
+    }
+    result[kind] = Object.fromEntries(
+      SSR_WOW_METRICS.map(metric => [metric, average(daily.map(d => d[metric]))]),
+    )
+  }
+  return result
+}
 
 function aggregateCrawlerStats(weekDates) {
   const totals = {}
@@ -276,6 +293,13 @@ Combined：${JSON.stringify(curCombined)}${specialEventsBlock(date)}`)
   }
 
   const crawlerStats = aggregateCrawlerStats(weekDates)
+  const prevWeekCrawlerStats = aggregateCrawlerStats(shiftDates(weekDates, 7))
+  crawlerStats.wow = buildCrawlerWow(crawlerStats, prevWeekCrawlerStats)
+
+  const ssrCurrentAvg  = await aggregateSsrWeeklyAvg(weekDates)
+  const ssrPreviousAvg = await aggregateSsrWeeklyAvg(shiftDates(weekDates, 7))
+  const ssrWow = buildSsrWow(ssrCurrentAvg, ssrPreviousAvg, SSR_WOW_METRICS)
+
   const dateRange = `${weekDates[0]} - ${weekDates[weekDates.length - 1]}`
   const res = await fetch(`${process.env.ANTHROPIC_BASE_URL}/v1/messages`, {
     method:  'POST',
@@ -287,7 +311,7 @@ Combined：${JSON.stringify(curCombined)}${specialEventsBlock(date)}`)
     body: JSON.stringify({
       model:      'claude-4.6-sonnet',
       max_tokens: 12000,
-      messages: [{ role: 'user', content: buildWeeklyAnalysisPrompt(sections, dateRange, gscData, crawlerStats) }],
+      messages: [{ role: 'user', content: buildWeeklyAnalysisPrompt(sections, dateRange, gscData, crawlerStats, ssrWow) }],
     }),
   })
 

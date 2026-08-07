@@ -86,11 +86,20 @@ ${sections.join('\n\n')}
 }
 
 // ── 週報 prompt（weekly report 用）──────────────
-export function buildWeeklyAnalysisPrompt(sections, dateRange, gscData = null, crawlerStats = null) {
+export function buildWeeklyAnalysisPrompt(sections, dateRange, gscData = null, crawlerStats = null, ssrWow = null) {
   const crawlerSection = crawlerStats
     ? `【SEO 爬蟲統計（本週加總，已分類）】
-${JSON.stringify(crawlerStats)}`
+${JSON.stringify(crawlerStats)}
+
+crawlerStats.wow 已計算好總量與各分類（Google系/AI系/SEO工具/其他）的週對週變化率（changePct，單位%，上週基準為 0 時為 null），直接引用即可，不要自行重新計算。changePct 為 null 時輸出「無上週基準」。`
     : '【SEO 爬蟲統計】本週爬蟲資料讀取失敗，略過。'
+
+  const ssrWowSection = ssrWow
+    ? `【SSR 效能週對週比較（各頁面類型週均值 vs 上週同期）】
+${JSON.stringify(ssrWow)}
+
+已計算好各頁面類型（${pageKindKeys.join('/')}）四項指標（p95_ms、p99_ms、abnormal_render_rate_pct、slow_render_rate_pct）的週均值與 changePct，直接引用即可，不要自行重新計算。p95_ms/p99_ms/abnormal_render_rate_pct/slow_render_rate_pct 皆為越低越好，changePct 為正代表變差。changePct 為 null 代表本週或上週缺資料，輸出「無上週基準」。`
+    : ''
 
   const gscSection = gscData
     ? `【GSC 週期數據】
@@ -117,6 +126,8 @@ ${sharedBackground()}
 
 ${sections.join('\n\n')}
 
+${ssrWowSection}
+
 ${crawlerSection}
 
 ${gscSection}
@@ -126,10 +137,10 @@ ${gscSection}
 ===MARKDOWN===
 （週報，使用 Markdown 格式：標題用 ##、表格、**粗體**）
 （包含以下區塊，依序排列：
-  1. 本週整體 SSR 效能趨勢（表格：P95/P99/異常率/慢渲染率，標注 ✅⚠️🚨）
+  1. 本週整體 SSR 效能趨勢（先列出各頁面類型週對週變化率：P95/P99/異常率/慢渲染率的 changePct，使用已提供的 ssrWowSection 資料；接著才是本週表格：P95/P99/異常率/慢渲染率，標注 ✅⚠️🚨）
   2. 404 狀況（本週均值，標注與 SEO 目標 ${config.rules.error404.healthy_pct}% 的落差）
   3. GSC 指標摘要（有資料時才輸出：曝光/點擊週變化、/product 表現、Coverage、5XX、手機CWV）
-  4. SEO 爬蟲統計（使用已提供的 crawlerStats，依請求量排序列表；標注各組佔比；AI 系爬蟲單獨強調）
+  4. SEO 爬蟲統計（本區塊最前面先列出週對週變化率：總請求量與各分類（Google系/AI系/SEO工具/其他）的 changePct，使用已提供的 crawlerStats.wow；接著才是依請求量排序的 bot 列表，標注各組佔比；AI 系爬蟲單獨強調並使用粗體）
   5. 異常告警摘要（依日期由舊到新排序，無異常則寫「本週無異常」）
   6. 本週結論（含：一行流量重點摘要、觀測達標日數）））
 （注意事項區塊結尾加上：> ⚠️ 以上注意事項為 AI 建議，請由工程師判斷後再行動。）
@@ -137,9 +148,9 @@ ${gscSection}
 （Google Chat 精簡摘要：粗體用 *文字*（單星號）、不使用表格、分隔線用 ────────────）
 （Google Chat 會把 ~文字~ 解析為刪除線，數字區間一律用「-」（例如 13-15%），全文不可出現任何 ~ 字元）
 （只包含以下四個區塊，每區塊 3-5 行：
-  1. 本週重點（效能概況 + 一行流量摘要 + 觀測達標日數）
+  1. 本週重點（先講 P95/P99/異常率/慢渲染率的週對週變化率 changePct，再接效能概況 + 一行流量摘要 + 觀測達標日數）
   2. GSC 摘要（有資料時：/product 曝光與點擊週變化、Coverage 有效頁數變化、CWV 慢頁數變化，每項附具體數字；無資料則略過）
-  3. SEO 爬蟲統計（前三名 bot 與請求量，標注 AI 爬蟲佔比）
+  3. SEO 爬蟲統計（先講總量與 AI系爬蟲的週對週變化率 changePct，再列前三名 bot 與請求量，標注 AI 爬蟲佔比）
   4. 異常告警（依日期由舊到新，無異常則寫「無異常」）
   5. 本週結論與建議）
 （注意事項結尾加上：⚠️ 以上為 AI 建議，請工程師判斷後再行動。）`

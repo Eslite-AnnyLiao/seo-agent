@@ -419,6 +419,62 @@ export function dateRangeExclusiveStart(startDateStr, endDateStr) {
   return dates;
 }
 
+// 將日期陣列（'YYYYMMDD'）整批位移 offsetDays 天，用於算上週同期（offsetDays=7）
+export function shiftDates(dates, offsetDays) {
+  return dates.map(d => {
+    const dt = new Date(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T00:00:00Z`);
+    dt.setUTCDate(dt.getUTCDate() - offsetDays);
+    return formatDate(dt);
+  });
+}
+
+// 週對週變化率（百分比，四捨五入到小數 1 位）；本週或上週缺資料（null/undefined）、或上週基準為 0 時無法計算比例，回傳 null
+export function calcWowChangePct(current, previous) {
+  if (current == null || !previous) return null;
+  return parseFloat(((current - previous) / previous * 100).toFixed(1));
+}
+
+// 數值陣列的平均值，忽略 null/undefined（缺資料的日期）；全部缺值時回傳 null
+export function average(values) {
+  const nums = values.filter(v => v != null);
+  if (nums.length === 0) return null;
+  return parseFloat((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2));
+}
+
+// 合併本週／上週的爬蟲分類統計（aggregateCrawlerStats 的回傳值），算出總量與各分類的週對週變化
+export function buildCrawlerWow(current, previous) {
+  const allGroups = new Set([...Object.keys(current.groupTotals), ...Object.keys(previous.groupTotals)]);
+  const groups = {};
+  for (const group of allGroups) {
+    const cur = current.groupTotals[group] ?? 0;
+    const prev = previous.groupTotals[group] ?? 0;
+    groups[group] = { current: cur, previous: prev, changePct: calcWowChangePct(cur, prev) };
+  }
+  return {
+    grandTotal: {
+      current: current.grandTotal,
+      previous: previous.grandTotal,
+      changePct: calcWowChangePct(current.grandTotal, previous.grandTotal),
+    },
+    groups,
+  };
+}
+
+// 合併本週／上週的 SSR 效能週均值（每個頁面類型各指標的 average()），算出週對週變化
+// current/previous 形狀：{ [pageKind]: { [metric]: number|null } }；metrics 為要比較的欄位清單
+export function buildSsrWow(current, previous, metrics) {
+  const wow = {};
+  for (const kind of Object.keys(current)) {
+    wow[kind] = {};
+    for (const metric of metrics) {
+      const cur  = current[kind]?.[metric] ?? null;
+      const prev = previous[kind]?.[metric] ?? null;
+      wow[kind][metric] = { current: cur, previous: prev, changePct: calcWowChangePct(cur, prev) };
+    }
+  }
+  return wow;
+}
+
 // ── 觀測達標日 / 觀察期停損 ─────────────────────
 export function isQualifyingDay(qdSource, qd) {
   return (qdSource?.total_records ?? 0) > qd.min_requests
