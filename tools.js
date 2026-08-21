@@ -401,7 +401,7 @@ export function extractBotName(ua) {
 
 // ── 日期工具 ───────────────────────────────────
 function formatDate(d) {
-  return d.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; // YYYYMMDD，用本地時區避免 toISOString 的 UTC 位移
 }
 
 // startDateStr/endDateStr 為 'YYYYMMDD'，回傳 startDate 隔天到 endDate（含）之間所有日期

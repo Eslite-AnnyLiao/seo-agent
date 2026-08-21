@@ -251,14 +251,14 @@ async function runWeeklyReport(baseDate = null) {
   for (let i = 7; i >= 1; i--) {
     const d = new Date(base)
     d.setDate(d.getDate() - i)
-    weekDates.push(d.toISOString().slice(0, 10).replace(/-/g, ''))
+    weekDates.push(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`)
   }
 
   const sections = []
   for (const date of weekDates) {
     const prev = new Date(date.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'))
     prev.setDate(prev.getDate() - 1)
-    const prevStr = prev.toISOString().slice(0, 10).replace(/-/g, '')
+    const prevStr = `${prev.getFullYear()}${String(prev.getMonth() + 1).padStart(2, '0')}${String(prev.getDate()).padStart(2, '0')}`
 
     try {
       const curCombined = parseToolResult(await executeTool('read_json', { type: 'combined', date }))
