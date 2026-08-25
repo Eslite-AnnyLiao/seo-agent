@@ -25,10 +25,10 @@ export const config = {
       driveFolderId: '1_YHgUBBfcXmmWKwEUybyE-RI5eUaqqEN',
       seoAgentFolderId: '1MmLWR2m0MtuQ4v13o82HBvcm0XT5cPuJ',
       sheet: {
-        spreadsheetId: '1fSoJGQk34cGHJYLJ_nUcqLFqjaV8IQ623NjpKAEXkjM', // 商品頁 SSR 數據統計
+        spreadsheetId: '1HHpLloIk2sNI53PdjJorN_kgao4AXKEevKnm8gjXygI', // 商品頁 SSR 數據統計
         sheetName: '每日資料',
         gasWebhookUrl:
-          'https://script.google.com/a/macros/eslite.com/s/AKfycby4IbxbuWMtFRlMA4166-9IAR5-Skjm_ncUK2TubVUJjn4Rw7sLl6TcprNNhBiCB20i/exec',
+          'https://script.google.com/a/macros/eslite.com/s/AKfycbxrB9jmkWzf37OsWVuwJpMT9nb_6Vanc4JcOgvxwgijIOvV8YCgBGn719qksbo9eFgS/exec',
       },
       combinedRecordsKey: 'ssr_records',
       combinedCacheHitKey: 'cloudflare_cache_hit',
@@ -42,10 +42,10 @@ export const config = {
       driveFolderId: '1mvjXjpELu6QWaU37XC16k3_lX8-c101O',
       seoAgentFolderId: '145MJEd9TnIO22GAEnQtbfKGCRvRHwcmv',
       sheet: {
-        spreadsheetId: '13onChUJX9e-M6rtlWDghstMk_sQtgkrpUsgUaya4VLU', // 分類頁 SSR 數據統計
+        spreadsheetId: '1PRKqYaeVHnu_Z7ZW_nprlfM4k98-eFL5ooG7oT7Kcso', // 分類頁 SSR 數據統計
         sheetName: '每日資料',
         gasWebhookUrl:
-          'https://script.google.com/a/macros/eslite.com/s/AKfycby3LC2CoV3fANfsU-X9X0Y83jDmjll9LoFO3GxgK_JScCur3vBlLwXDihvK7-befkp9/exec',
+          'https://script.google.com/a/macros/eslite.com/s/AKfycbyO4kP4PmBnpSeFDLZrekz6q7-_EOmBkLRfymayfbGBjVInCSKFE3JFAhacgoG8C5fBNg/exec',
       },
       combinedRecordsKey: 'category_records',
       combinedCacheHitKey: 'cloudflare_cache_hit_category',
@@ -62,10 +62,10 @@ export const config = {
     driveFolderId: '1y0CMD0MhDrDtM-sUHFnKqS1Jni2wNFah',
     seoAgentFolderId: '1w089WQQpTFmkRtLN6jwPE7nFpUzhL2Pi',
     sheet: {
-      spreadsheetId: '1B8LnVlbRgbhci3PWinoNvYRWb93ZRbHDLnZCwrhBXRo', // 全站流量總覽
+      spreadsheetId: '1kh0PzD3O-ZPWX2vZJZguc7IEMgH6Ptv897s6AkKWzOY', // 全站流量總覽
       sheetName: '每日資料',
       gasWebhookUrl:
-        'https://script.google.com/a/macros/eslite.com/s/AKfycbySJAnYvCx_Aovz8uegyXVLuO-F0kanq82cfUbnCL7XQ7BC-NBW0Hxx_MHKyYc3_Qjx/exec',
+        'https://script.google.com/a/macros/eslite.com/s/AKfycbwe2YKHTQp29_cFBvC2zjAZ1zzoFE2ohWRBGBsB5P8k_WJ0uqAP7C94NB0g2Iuec2TL/exec',
     },
   },
 
